@@ -2,6 +2,8 @@
 Asher Haun and Victor Contreras
 Advised by Dr. Emmet Tomai
 
+[Project board](https://github.com/orgs/UTRGV-CS-Projects/projects/2?query=sort%3Aupdated-desc+is%3Aopen)
+
 Project based on the the [Minimal BGFX Example Project](https://github.com/jpcy/bgfx-minimal-example) by @jpcy, used with permission through the BSD-2 License: [![License](https://img.shields.io/badge/license-BSD--2%20clause-blue.svg)](https://bkaradzic.github.io/bgfx/license.html)
 
 ## Requirements
