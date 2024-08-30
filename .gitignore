@@ -1,0 +1,143 @@
+# General Files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+*.directory
+
+# Compiled Object Files
+*.o
+*.obj
+*.lo
+*.slo
+*.d
+*.Plo
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Static Libraries
+*.lib
+*.a
+
+# Compiled Dynamic Libraries
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executable Files
+*.exe
+*.out
+*.app
+*.ipa
+*.xcent
+
+# Debug files
+*.dSYM/
+*.stackdump
+
+# Temporary Files
+*.tmp
+*.temp
+*.pid
+*.seed
+*.pid.lock
+
+# Backup Files
+*~
+
+# Premake Generated Files
+Makefile
+Makefile.config
+Makefile.in
+*.make
+*.makefile
+*.workspace
+*.sln
+*.vcxproj*
+*.vcproj*
+*.xcodeproj
+*.xcworkspace
+*.ninja
+
+# Build Directories
+build/
+bin/
+bin-int/
+obj/
+out/
+Debug/
+Release/
+
+# Visual Studio Specific
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+ipch/
+*_i.c
+*_p.c
+*_i.h
+*.pch
+*.idb
+*.pdb
+*.ipdb
+*.iobj
+*.rsp
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*.log
+*.vspscc
+*.vssscc
+*.code-workspace
+
+# Xcode Specific
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xcuserdatad
+*.xcscmblueprint
+
+# CLion Specific
+.idea/
+*.iml
+cmake-build-*/
+
+# CMake Specific
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+_compile_commands.json
+
+# Other
+.gradle/
+*.patch
+*.diff
+.cache/
+.sconsign.dblite
+*.db
+
+# Backup
+*.bak
+*.bak2
+*.old
+*.orig
+*.original
+
