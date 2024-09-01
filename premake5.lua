@@ -33,9 +33,9 @@ local GLFW_DIR = "glfw"
 -- 			["ALWAYS_SEARCH_USER_PATHS"] = "YES", -- This is the minimum version of macos we'll be able to run on
 -- 		};
 
-solution "bgfx-minimal-example"
+solution "voxels-senior-project"
     location(BUILD_DIR)
-    startproject "helloworld"
+    startproject "voxels"
     configurations { "Release", "Debug" }
     platforms { "x86", "x86_64" }
 
@@ -75,36 +75,14 @@ function setBxCompat()
 		includedirs { path.join(BX_DIR, "include/compat/osx") }
 		buildoptions { "-x objective-c++" }
 end
-	
-project "helloworld"
-	kind "ConsoleApp"
-	language "C++"
-	cppdialect "C++14"
-	exceptionhandling "Off"
-	rtti "Off"
-	files "helloworld.cpp"
-	includedirs
-	{
-		path.join(BGFX_DIR, "include"),
-		path.join(BX_DIR, "include"),
-		path.join(GLFW_DIR, "include")
-	}
-	links { "bgfx", "bimg", "bx", "glfw" }
-	filter "system:windows"
-		links { "gdi32", "kernel32", "psapi" }
-	filter "system:linux"
-		links { "dl", "GL", "pthread", "X11" }
-	filter "system:macosx"
-		links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
-	setBxCompat()
 
-project "helloworld_mt"
+project "voxels"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++14"
 	exceptionhandling "Off"
 	rtti "Off"
-	files "helloworld_mt.cpp"
+	files "main.cpp"
 	includedirs
 	{
 		path.join(BGFX_DIR, "include"),
