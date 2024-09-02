@@ -46,6 +46,6 @@ $ ./build.sh run gmake2 Release [num_cores]
 ```
 
 ### Credits
-Our premake5.lua script is based on the the [Minimal BGFX Example Project](https://github.com/jpcy/bgfx-minimal-example) by @jpcy, used with permission through the [BSD-2 License](https://img.shields.io/badge/license-BSD--2%20clause-blue.svg)](https://bkaradzic.github.io/bgfx/license.html).
+Our premake5.lua script is based on the the [Minimal BGFX Example Project](https://github.com/jpcy/bgfx-minimal-example) by @jpcy, used with permission through the [BSD-2 License](https://bkaradzic.github.io/bgfx/license.html).
 
 
