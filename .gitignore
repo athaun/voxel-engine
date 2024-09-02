@@ -67,7 +67,6 @@ Makefile.in
 
 # Build Directories
 build/
-bin/
 bin-int/
 obj/
 out/
