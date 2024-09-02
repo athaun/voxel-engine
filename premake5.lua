@@ -55,10 +55,11 @@ project "voxels"
 	cppdialect "C++14"
 	exceptionhandling "Off"
 	rtti "Off"
-	files { "src/**.h", "src/**.cpp" }
+	files { "src/**.h", "src/**.cpp", "src/**.bin" }
 	includedirs {
 		"src",
 		"src/core",
+		"src/shaders",
 		path.join(BGFX_DIR, "include"),
 		path.join(BGFX_DIR, "3rdparty"),
 		path.join(BX_DIR, "include"),
@@ -70,7 +71,7 @@ project "voxels"
 	filter "system:macosx" links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
 	filter "system:windows" links { "gdi32", "kernel32", "psapi" }
 	setBxCompat()
-	
+
 project "bgfx"
 	kind "StaticLib"
 	language "C++"

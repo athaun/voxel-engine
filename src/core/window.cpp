@@ -15,9 +15,6 @@
 namespace Window {
     static GLFWwindow* window = nullptr;
 
-    static int width = 0;
-    static int height = 0;
-
     void init() {
         // Initialize GLFW for windowing
         if (!glfwInit()) {
