@@ -5,7 +5,7 @@ IF "%~1" == "compile" GOTO Compile
 IF "%~1" == "run" GOTO Run
 if "%~1" == "clean" GOTO Clean
 
-vendor\premake5.exe %1
+bin\premake5.exe %1
 
 :PrintHelp
     echo Usage:
@@ -20,7 +20,7 @@ vendor\premake5.exe %1
     echo     num_cores: The number of cores to use for building (default: 4)
     
     echo Available build systems:
-    vendor\premake5.exe --help | findstr /R /C:"^ clean" /C:"^ codelite" /C:"^ gmake" /C:"^ gmake2" /C:"^ vs2005" /C:"^ vs2008" /C:"^ vs2010" /C:"^ vs2012" /C:"^ vs2013" /C:"^ vs2015" /C:"^ vs2017" /C:"^ vs2019" /C:"^ vs2022" /C:"^ xcode4"
+    bin\premake5.exe --help | findstr /R /C:"^ clean" /C:"^ codelite" /C:"^ gmake" /C:"^ gmake2" /C:"^ vs2005" /C:"^ vs2008" /C:"^ vs2010" /C:"^ vs2012" /C:"^ vs2013" /C:"^ vs2015" /C:"^ vs2017" /C:"^ vs2019" /C:"^ vs2022" /C:"^ xcode4"
 
     GOTO Done
 
@@ -34,7 +34,7 @@ vendor\premake5.exe %1
     set numCores=%4
     if "%numCores%" == "" set numCores=4
 
-    vendor\premake5.exe %buildSystem%
+    bin\premake5.exe %buildSystem%
 
     if not defined DevEnvDir (
         call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
@@ -54,9 +54,12 @@ vendor\premake5.exe %1
     set numCores=%4
     if "%numCores%" == "" set numCores=4
 
+    set executable=.\build\%buildSystem%\bin\x86_64\%configuration%\voxels.exe
+
+    del "%executable%"
+
     call :Compile compile %buildSystem% %configuration% %numCores%
 
-    set executable=.\build\%buildSystem%\bin\x86_64\%configuration%\voxels.exe
     if exist "%executable%" (
         echo Running %executable%
         "%executable%"

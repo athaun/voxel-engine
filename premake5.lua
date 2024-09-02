@@ -2,36 +2,10 @@ local BUILD_DIR = path.join("build", _ACTION)
 if _OPTIONS["cc"] ~= nil then
 	BUILD_DIR = BUILD_DIR .. "_" .. _OPTIONS["cc"]
 end
-local BGFX_DIR = "bgfx"
-local BIMG_DIR = "bimg"
-local BX_DIR = "bx"
-local GLFW_DIR = "glfw"
-
--- solution "bgfx-minimal-example"
--- 	location(BUILD_DIR)
--- 	startproject "helloworld"
--- 	configurations { "Release", "Debug" }
--- 	if os.is64bit() and not os.istarget("windows") then
--- 		platforms "x86_64"
--- 	else
--- 		platforms { "x86", "x86_64" }
--- 	end
--- 	filter "configurations:Release"
--- 		defines "NDEBUG"
--- 		optimize "Full"
--- 	filter "configurations:Debug*"
--- 		defines "_DEBUG"
--- 		optimize "Debug"
--- 		symbols "On"
--- 	filter "platforms:x86"
--- 		architecture "x86"
--- 	filter "platforms:x86_64"
--- 		architecture "x86_64"
--- 	filter "system:macosx"
--- 		xcodebuildsettings {
--- 			["MACOSX_DEPLOYMENT_TARGET"] = "10.9",
--- 			["ALWAYS_SEARCH_USER_PATHS"] = "YES", -- This is the minimum version of macos we'll be able to run on
--- 		};
+local BGFX_DIR = "lib/bgfx"
+local BIMG_DIR = "lib/bimg"
+local BX_DIR = "lib/bx"
+local GLFW_DIR = "lib/glfw"
 
 solution "voxels-senior-project"
     location(BUILD_DIR)
@@ -50,21 +24,20 @@ solution "voxels-senior-project"
     filter "configurations:Release"
         defines "NDEBUG"
         optimize "Full"
+
     filter "configurations:Debug*"
         defines "_DEBUG"
         optimize "Debug"
         symbols "On"
-    filter "platforms:x86"
-        architecture "x86"
-    filter "platforms:x86_64"
-        architecture "x86_64"
-    filter "platforms:arm64"
-        architecture "ARM64"
-    filter "system:macosx"
-        xcodebuildsettings {
-            ["MACOSX_DEPLOYMENT_TARGET"] = "10.9",
-            ["ALWAYS_SEARCH_USER_PATHS"] = "YES", -- This is the minimum version of macos we'll be able to run on
-        };
+
+    filter "platforms:x86" architecture "x86"
+    filter "platforms:arm64" architecture "ARM64"
+    filter "platforms:x86_64" architecture "x86_64"
+
+    filter "system:macosx" xcodebuildsettings {
+		["MACOSX_DEPLOYMENT_TARGET"] = "10.9",
+		["ALWAYS_SEARCH_USER_PATHS"] = "YES", -- This is the minimum version of macos we'll be able to run on
+	};
 
 function setBxCompat()
 	filter "action:vs*"
@@ -82,20 +55,20 @@ project "voxels"
 	cppdialect "C++14"
 	exceptionhandling "Off"
 	rtti "Off"
-	files "main.cpp"
-	includedirs
-	{
+	files { "src/**.h", "src/**.cpp" }
+	includedirs {
+		"src",
+		"src/core",
 		path.join(BGFX_DIR, "include"),
+		path.join(BGFX_DIR, "3rdparty"),
 		path.join(BX_DIR, "include"),
-		path.join(GLFW_DIR, "include")
+		path.join(GLFW_DIR, "include"),
+		path.join(BIMG_DIR, "include"),
 	}
 	links { "bgfx", "bimg", "bx", "glfw" }
-	filter "system:windows"
-		links { "gdi32", "kernel32", "psapi" }
-	filter "system:linux"
-		links { "dl", "GL", "pthread", "X11" }
-	filter "system:macosx"
-		links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
+	filter "system:linux" links { "dl", "GL", "pthread", "X11" }
+	filter "system:macosx" links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
+	filter "system:windows" links { "gdi32", "kernel32", "psapi" }
 	setBxCompat()
 	
 project "bgfx"

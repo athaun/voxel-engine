@@ -15,11 +15,11 @@ PrintHelp() {
     echo "    num_cores: The number of cores to use for building (default: 4)"
     echo ""
     echo "Available build systems:"
-    vendor/premake5-linux --help | awk '/ACTIONS/{flag=1; next} flag'
+    bin/premake5-linux --help | awk '/ACTIONS/{flag=1; next} flag'
 }
 
 Compile() {
-    vendor/premake5-linux "$buildSystem"
+    bin/premake5-linux "$buildSystem"
     cd build/"$buildSystem"
     make CONFIG="$configuration" -j"$numCores"
     cd -
@@ -68,6 +68,6 @@ case $action in
         Clean
         ;;
     *)
-        vendor/premake5-linux "$action"
+        bin/premake5-linux "$action"
         ;;
 esac
