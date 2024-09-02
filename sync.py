@@ -20,5 +20,5 @@ def exitApp ():
 signal.signal(signal.SIGINT, exitApp)
 
 while running:
-    os.system(f"rsync -aruzv {from_path} {to_path}")
+    os.system(f"scp -r {from_path} {to_path}")
     time.sleep(1.2)
