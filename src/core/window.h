@@ -1,7 +1,8 @@
 #pragma once
 
 namespace Window {
-    static int width, height;
+    extern int width;
+    extern int height;
     void init();
     void shutdown();
     void begin_update();

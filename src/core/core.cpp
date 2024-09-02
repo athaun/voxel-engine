@@ -1,7 +1,6 @@
 #include "core.h"
 
 namespace Core {
-
     void init() {
         Window::init();
     }

@@ -11,9 +11,13 @@
 #endif
 #include <GLFW/glfw3native.h>
 #include "log.h"
+#include <iostream>
 
 namespace Window {
     static GLFWwindow* window = nullptr;
+
+    int width = 0;
+    int height = 0;
 
     void init() {
         // Initialize GLFW for windowing
@@ -22,7 +26,7 @@ namespace Window {
             return;
         }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        window = glfwCreateWindow(1024, 768, "Hello World", nullptr, nullptr);
+        window = glfwCreateWindow(1920, 1080, "Hello World", nullptr, nullptr);
         if (!window) {
             Log::error("Failed to create window");
             return;
@@ -50,9 +54,9 @@ namespace Window {
         }
 
 	    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
-        bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
 
-        glfwGetWindowSize(window, &width, &height);
+        glfwGetWindowSize(window, &Window::width, &Window::height);
+        std::cout << Window::width << "\n";
     }
 
     void shutdown() {
@@ -65,11 +69,11 @@ namespace Window {
     void begin_update() {
         glfwPollEvents();
 
-		int oldWidth = width, oldHeight = height;
-		glfwGetWindowSize(window, &width, &height);
-		if (width != oldWidth || height != oldHeight) {
-			// Resize window :o
-		}
+		// int oldWidth = width, oldHeight = height;
+		// glfwGetWindowSize(window, &Window::width, &Window::height);
+		// if (width != oldWidth || height != oldHeight) {
+		// 	// Resize window :o
+		// }
     }
 
     void end_update() {
