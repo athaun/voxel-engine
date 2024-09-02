@@ -31,7 +31,6 @@
 *.dylib
 
 # Executable Files
-*.exe
 *.out
 *.app
 *.ipa
