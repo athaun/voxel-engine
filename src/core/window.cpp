@@ -83,4 +83,14 @@ namespace Window {
     bool should_close() {
         return glfwWindowShouldClose(window);
     }
+    // Will keep this, might remove later if not necessary since mouse movement isn't implemented yet.
+    void get_mouse_position(float& x, float& y) {
+        double mouseX, mouseY;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetCursorPos(window, width / 2.0, height / 2.0);
+    }
+
+    bool is_key_pressed(int key) {
+        return glfwGetKey(window, key) == GLFW_PRESS;
+    }
 }

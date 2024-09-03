@@ -4,6 +4,12 @@
 #include <bx/math.h>
 #include <iostream>
 
+// Camera position variables
+float cameraPosX = 0.0f;
+float cameraPosY = 0.0f;
+float cameraPosZ = -5.0f;
+float movementSpeed = 0.1f; 
+
 struct PosColorVertex
 {
     float x;
@@ -49,15 +55,15 @@ bgfx::ShaderHandle loadShader(const char* FILENAME) {
     const char* shaderPath = nullptr;
 
     switch (bgfx::getRendererType()) {
-        case bgfx::RendererType::Noop:
-        case bgfx::RendererType::Direct3D9:  shaderPath = "src/shaders/dx9/";   break;
-        case bgfx::RendererType::Direct3D11:
-        case bgfx::RendererType::Direct3D12: shaderPath = "src/shaders/dx11/";  break;
-        case bgfx::RendererType::Gnm:        shaderPath = "src/shaders/pssl/";  break;
-        case bgfx::RendererType::Metal:      shaderPath = "src/shaders/metal/"; break;
-        case bgfx::RendererType::OpenGL:     shaderPath = "src/shaders/glsl/";  break;
-        case bgfx::RendererType::OpenGLES:   shaderPath = "src/shaders/essl/";  break;
-        case bgfx::RendererType::Vulkan:     shaderPath = "src/shaders/spirv/"; break;
+    case bgfx::RendererType::Noop:
+    case bgfx::RendererType::Direct3D9:  shaderPath = "src/shaders/dx9/";   break;
+    case bgfx::RendererType::Direct3D11:
+    case bgfx::RendererType::Direct3D12: shaderPath = "src/shaders/dx11/";  break;
+    case bgfx::RendererType::Gnm:        shaderPath = "src/shaders/pssl/";  break;
+    case bgfx::RendererType::Metal:      shaderPath = "src/shaders/metal/"; break;
+    case bgfx::RendererType::OpenGL:     shaderPath = "src/shaders/glsl/";  break;
+    case bgfx::RendererType::OpenGLES:   shaderPath = "src/shaders/essl/";  break;
+    case bgfx::RendererType::Vulkan:     shaderPath = "src/shaders/spirv/"; break;
     }
 
     size_t shaderLen = strlen(shaderPath);
@@ -99,9 +105,6 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    std::cout << "Window width " << Window::width << "\n";
-    
-    
     unsigned int counter = 0;
 
     bgfx::VertexLayout pcvDecl;
@@ -112,7 +115,7 @@ int main(int argc, char** argv) {
     bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(bgfx::makeRef(cubeVertices, sizeof(cubeVertices)), pcvDecl);
     bgfx::IndexBufferHandle ibh = bgfx::createIndexBuffer(bgfx::makeRef(cubeTriList, sizeof(cubeTriList)));
 
-    
+
     bgfx::ShaderHandle vsh = loadShader("vs_cubes.bin");
     bgfx::ShaderHandle fsh = loadShader("fs_cubes.bin");
     bgfx::ProgramHandle program = bgfx::createProgram(vsh, fsh, true);
@@ -121,21 +124,48 @@ int main(int argc, char** argv) {
     while (!Window::should_close()) {
         Window::begin_update();
 
-        const bx::Vec3 at = {0.0f, 0.0f,  0.0f};
-        const bx::Vec3 eye = {0.0f, 0.0f, -5.0f};
+        // Handle camera movement
+        if (Window::is_key_pressed(Window::Key::W)) {
+            cameraPosZ += movementSpeed;
+        }
+        if (Window::is_key_pressed(Window::Key::S)) {
+            cameraPosZ -= movementSpeed;
+        }
+        if (Window::is_key_pressed(Window::Key::A)) {
+            cameraPosX -= movementSpeed;
+        }
+        if (Window::is_key_pressed(Window::Key::D)) {
+            cameraPosX += movementSpeed;
+        }
+        if (Window::is_key_pressed(Window::Key::SPACE)) {
+            cameraPosY += movementSpeed;
+        }
+        // LEFT CTRL, btw.
+        if (Window::is_key_pressed(Window::Key::CTRL)) {
+            cameraPosY -= movementSpeed;
+        }
+        if (Window::is_key_pressed(Window::Key::ESCAPE)) {
+            break;
+        }
+
+        // Set up view matrix
+        const bx::Vec3 at = { cameraPosX, cameraPosY, cameraPosZ + 5.0f };
+        const bx::Vec3 eye = { cameraPosX, cameraPosY, cameraPosZ };
         float view[16];
         bx::mtxLookAt(view, eye, at);
+
+        //// Set up projection matrix
         float proj[16];
         bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
         bgfx::setViewTransform(0, view, proj);
 
         float mtx[16];
         bx::mtxRotateXY(mtx, counter * 0.01f, counter * 0.01f);
-        bgfx::setTransform(mtx);
-        
+        bgfx::setTransform(mtx); // Apply rotation to the cube
+
+        // Render the scene
         bgfx::setVertexBuffer(0, vbh);
         bgfx::setIndexBuffer(ibh);
-    
         bgfx::submit(0, program);
         bgfx::frame();
         counter++;
