@@ -242,6 +242,7 @@ int main(int argc, char** argv) {
         bgfx::setIndexBuffer(ibh);
         bgfx::submit(0, program);
         bgfx::frame();
+        counter++;
 
         Window::end_update();
     }
