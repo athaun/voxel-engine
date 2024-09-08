@@ -10,6 +10,16 @@ float cameraPosY = 0.0f;
 float cameraPosZ = -5.0f;
 float movementSpeed = 0.1f; 
 
+float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
+float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
+float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
+
+// Define movement vectors
+bx::Vec3 forward(0.0f, 0.0f, 1.0f);
+bx::Vec3 right(1.0f, 0.0f, 0.0f);
+
+
+// Make the cube ////////////////////////
 struct PosColorVertex
 {
     float x;
@@ -45,12 +55,15 @@ static const uint16_t cubeTriList[] =
     2, 3, 6,
     6, 3, 7,
 };
+////////////////////////////////////////
 
 char* absolute_path(const char* relativePath) {
     char* absPath = _fullpath(nullptr, relativePath, _MAX_PATH);
     return absPath;
 }
 
+
+// Load in Shader
 bgfx::ShaderHandle loadShader(const char* FILENAME) {
     const char* shaderPath = nullptr;
 
@@ -120,41 +133,102 @@ int main(int argc, char** argv) {
     bgfx::ShaderHandle fsh = loadShader("fs_cubes.bin");
     bgfx::ProgramHandle program = bgfx::createProgram(vsh, fsh, true);
 
+    // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
+    // Thus, the last known beginning mouse position, or the first mouse position, will be in the same position.
+    int lastMouseX = Window::width / 2;
+    int lastMouseY = Window::height / 2;
+
+    // Determine how high we want the max to be to move our camera vertically
+    // Recommended to be less than 90 or the camera will invert/flip
+    const float maxPitch = 89.0f * (3.14159f / 180.0f); // Convert degrees to radians
 
     while (!Window::should_close()) {
         Window::begin_update();
 
         // Handle camera movement
+        bx::Vec3 forward = { sinf(cameraYaw) * cosf(cameraPitch),
+                             sinf(cameraPitch),
+                             cosf(cameraYaw) * cosf(cameraPitch) };
+
+        bx::Vec3 right = { cosf(cameraYaw), 0.0f, -sinf(cameraYaw) };  // Right direction (perpendicular to forward)
+
+        // Normalize directions manually
+        // (Since bx doesn't have a vec3normalize.....)
+        bx::Vec3 normForward = normalize(forward);
+        bx::Vec3 normRight = normalize(right);
+
+        // Movement speed applied to direction vectors
+        // WASD stuff, with extras :D
+        // Change the new forward position accordingly so forward is relative to where the camera is facing with the mouse
         if (Window::is_key_pressed(Window::Key::W)) {
-            cameraPosZ += movementSpeed;
+            cameraPosX += normForward.x * movementSpeed;
+            cameraPosY += normForward.y * movementSpeed;
+            cameraPosZ += normForward.z * movementSpeed;
         }
         if (Window::is_key_pressed(Window::Key::S)) {
-            cameraPosZ -= movementSpeed;
+            cameraPosX -= normForward.x * movementSpeed;
+            cameraPosY -= normForward.y * movementSpeed;
+            cameraPosZ -= normForward.z * movementSpeed;
         }
         if (Window::is_key_pressed(Window::Key::A)) {
-            cameraPosX -= movementSpeed;
+            cameraPosX -= normRight.x * movementSpeed;
+            cameraPosZ -= normRight.z * movementSpeed;
         }
         if (Window::is_key_pressed(Window::Key::D)) {
-            cameraPosX += movementSpeed;
+            cameraPosX += normRight.x * movementSpeed;
+            cameraPosZ += normRight.z * movementSpeed;
         }
+        // Go Up
         if (Window::is_key_pressed(Window::Key::SPACE)) {
             cameraPosY += movementSpeed;
         }
-        // LEFT CTRL, btw.
+        // Go Down
         if (Window::is_key_pressed(Window::Key::CTRL)) {
             cameraPosY -= movementSpeed;
         }
+        // Escape
         if (Window::is_key_pressed(Window::Key::ESCAPE)) {
             break;
         }
 
-        // Set up view matrix
-        const bx::Vec3 at = { cameraPosX, cameraPosY, cameraPosZ + 5.0f };
-        const bx::Vec3 eye = { cameraPosX, cameraPosY, cameraPosZ };
-        float view[16];
-        bx::mtxLookAt(view, eye, at);
+        // Handle mouse position
+        float mouseX, mouseY;
+        Window::get_mouse_position(mouseX, mouseY);
 
-        //// Set up projection matrix
+        // Calculate the delta from the last known mouse position
+        int deltaX = static_cast<int>(mouseX - lastMouseX);
+        int deltaY = static_cast<int>(mouseY - lastMouseY);
+
+        // Update camera rotation based on mouse movement
+        cameraYaw += deltaX * mouseSensitivity;
+        cameraPitch -= deltaY * mouseSensitivity;
+
+        // Clamp the pitch to avoid flipping
+        // This will stop the camera moving vertically at 89 degrees.
+        if (cameraPitch > maxPitch) {
+            cameraPitch = maxPitch;
+        }
+        else if (cameraPitch < -maxPitch) {
+            cameraPitch = -maxPitch;
+        }
+
+        // Redefine last mouse position to be current before frame ends
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+
+        // Define camera position and target vectors
+        bx::Vec3 eye = { cameraPosX, cameraPosY, cameraPosZ };
+        bx::Vec3 at = { cameraPosX + sinf(cameraYaw) * cosf(cameraPitch),
+                        cameraPosY + sinf(cameraPitch),
+                        cameraPosZ + cosf(cameraYaw) * cosf(cameraPitch) };
+
+        // Up vector (typically, this is (0, 1, 0) for a standard upright camera)
+        bx::Vec3 up = { 0.0f, 1.0f, 0.0f };
+
+        float view[16];
+        bx::mtxLookAt(view, eye, at, up);
+
+        // Set up projection matrix
         float proj[16];
         bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
         bgfx::setViewTransform(0, view, proj);
@@ -172,6 +246,6 @@ int main(int argc, char** argv) {
 
         Window::end_update();
     }
-    Core::shutdown();
-    return 0;
+Core::shutdown();
+return 0;
 }

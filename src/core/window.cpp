@@ -32,6 +32,11 @@ namespace Window {
             return;
         }
 
+        //Reset mouse position to center of window every frame
+        glfwSetCursorPos(window, Window::width / static_cast<double>(2), Window::height / static_cast<double>(2));
+        // Disable cursor
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
         bgfxInit.type = bgfx::RendererType::Count;
@@ -57,6 +62,7 @@ namespace Window {
 
         glfwGetWindowSize(window, &Window::width, &Window::height);
         std::cout << Window::width << "\n";
+
     }
 
     void shutdown() {
@@ -83,11 +89,12 @@ namespace Window {
     bool should_close() {
         return glfwWindowShouldClose(window);
     }
-    // Will keep this, might remove later if not necessary since mouse movement isn't implemented yet.
     void get_mouse_position(float& x, float& y) {
         double mouseX, mouseY;
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        glfwSetCursorPos(window, width / 2.0, height / 2.0);
+        glfwGetCursorPos(window, &mouseX, &mouseY);
+
+        x = static_cast<float>(mouseX);
+        y = static_cast<float>(mouseY);
     }
 
     bool is_key_pressed(int key) {
