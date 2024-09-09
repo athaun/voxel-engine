@@ -58,7 +58,11 @@ static const uint16_t cubeTriList[] =
 ////////////////////////////////////////
 
 char* absolute_path(const char* relativePath) {
-    char* absPath = _fullpath(nullptr, relativePath, _MAX_PATH);
+    char* absPath = realpath(relativePath, NULL);
+    if (absPath == NULL) {
+        perror("realpath");
+        return NULL;
+    }
     return absPath;
 }
 

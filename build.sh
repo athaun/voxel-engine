@@ -35,8 +35,7 @@ Compile() {
 }
 
 Run() {
-    Compile
-    # Add your run commands here
+    Compile && ./build/gmake2/bin/x86/Release/voxels 
 }
 
 # Default values

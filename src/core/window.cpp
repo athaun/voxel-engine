@@ -1,4 +1,4 @@
-#include "window.h"
+#include <iostream>
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <GLFW/glfw3.h>
@@ -10,8 +10,9 @@
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
 #include <GLFW/glfw3native.h>
+
+#include "window.h"
 #include "log.h"
-#include <iostream>
 
 namespace Window {
     static GLFWwindow* window = nullptr;
@@ -26,7 +27,7 @@ namespace Window {
             return;
         }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        window = glfwCreateWindow(1920, 1080, "Hello World", nullptr, nullptr);
+        window = glfwCreateWindow(1600, 900, "Hello World", nullptr, nullptr);
         if (!window) {
             Log::error("Failed to create window");
             return;
@@ -40,8 +41,8 @@ namespace Window {
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
         bgfxInit.type = bgfx::RendererType::Count;
-        bgfxInit.resolution.width = 1920;
-        bgfxInit.resolution.height = 1080;
+        bgfxInit.resolution.width = 1600;
+        bgfxInit.resolution.height = 900;
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
 
         #if BX_PLATFORM_WINDOWS
@@ -53,23 +54,29 @@ namespace Window {
             bgfxInit.platformData.nwh = glfwGetCocoaWindow(window);
         #endif
 
+        bgfx::renderFrame();
+
         if (!bgfx::init(bgfxInit)) {
             Log::error("Failed to initialize BGFX");
             return;
         }
 
-	    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+        bgfx::touch(0);
 
+        glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+            bgfx::reset(width, height, BGFX_RESET_VSYNC);
+            bgfx::setViewRect(0, 0, 0, width, height);
+        });
+        glfwSetWindowSize(window, bgfxInit.resolution.width, bgfxInit.resolution.height);
         glfwGetWindowSize(window, &Window::width, &Window::height);
-        std::cout << Window::width << "\n";
-
+        std::cout << Window::width << " | " << bgfxInit.resolution.width << "\n";
     }
 
     void shutdown() {
         glfwDestroyWindow(window);
         glfwTerminate();
 
-        // bgfx::shutdown(); // should come back to this
+        bgfx::shutdown(); // should come back to this
     }
 
     void begin_update() {
