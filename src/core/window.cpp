@@ -75,18 +75,10 @@ namespace Window {
     void shutdown() {
         glfwDestroyWindow(window);
         glfwTerminate();
-
-        bgfx::shutdown(); // should come back to this
     }
 
     void begin_update() {
         glfwPollEvents();
-
-		// int oldWidth = width, oldHeight = height;
-		// glfwGetWindowSize(window, &Window::width, &Window::height);
-		// if (width != oldWidth || height != oldHeight) {
-		// 	// Resize window :o
-		// }
     }
 
     void end_update() {
