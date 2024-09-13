@@ -3,6 +3,9 @@
 #include "bx/bx.h"
 #include <bx/math.h>
 #include <iostream>
+#include <brtshaderc.h>
+#include "render/batch.h"
+
 
 // Camera position variables
 float cameraPosX = 0.0f;
@@ -65,6 +68,15 @@ char* absolute_path(const char* relativePath) {
 
 // Load in Shader
 bgfx::ShaderHandle loadShader(const char* FILENAME) {
+
+    // Render::Batch b = Render::Batch(10, 10);
+    // b.loadShader("vs_batch");
+
+    // compile vertex shader, with default arguments.
+        const bgfx::Memory* memVsh = shaderc::compileShader(shaderc::ST_VERTEX, "shader/vs_cubes.sc");
+        bgfx::ShaderHandle vsh = bgfx::createShader(memVsh);
+
+
     const char* shaderPath = nullptr;
 
     switch (bgfx::getRendererType()) {
