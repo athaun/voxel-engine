@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstring>
 #include <fstream>
-#include <brtshaderc.h>
+// #include <brtshaderc.h>
 
 struct Vertex {
     float x, y, z; // Position
