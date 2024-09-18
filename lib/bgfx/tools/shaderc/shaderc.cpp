@@ -10,7 +10,7 @@
 #define MAX_TAGS 256
 extern "C"
 {
-#include <fpp.h>
+#include "../../3rdparty/fcpp/fpp.h"
 } // extern "C"
 
 #define BGFX_SHADER_BIN_VERSION 9
