@@ -49,10 +49,62 @@ function setBxCompat()
 		buildoptions { "-x objective-c++" }
 end
 
+function compileShaders()
+    local platform = ""
+    if os.host() == "windows" then
+        platform = "windows"
+    elseif os.host() == "linux" then
+        platform = "linux"
+    elseif os.host() == "macosx" then
+        platform = "osx"
+    end
+
+	local shadercPath = path.join("bin", "bx_tools", platform, "shadercRelease")
+	local shaderDir = path.join("src", "shaders")
+	local includeDir = path.join(BGFX_DIR, "src")
+	local outputDir = path.join("build", "shaders")
+	local commonDir = path.join(BGFX_DIR, "examples", "common")
+	local varyingDef = path.join(shaderDir)
+	
+	-- Clean the output directory
+	if os.isdir(outputDir) then
+		os.rmdir(outputDir)
+	end
+    os.mkdir(outputDir)
+
+    -- Find all .sc files in the shader directory and subdirectories
+    local shaderFiles = os.matchfiles(path.join(shaderDir, "**.sc"))
+
+    for _, shaderFile in ipairs(shaderFiles) do
+        local shaderType = ""
+        if string.find(shaderFile, "v_") then
+            shaderType = "vertex"
+        elseif string.find(shaderFile, "f_") then
+            shaderType = "fragment"
+        elseif string.find(shaderFile, "c_") then
+            shaderType = "compute"
+        end
+
+		-- Compile the shader then output the binary to the output directory
+		local outputFile = path.join(outputDir, path.getbasename(shaderFile) .. ".bin")
+		local command = string.format('"%s" -f "%s" -o "%s" --platform %s --type %s --varyingdef "%s/varying.def.sc" ---verbose --profile s_5_0 -O 3 -i "%s"', shadercPath, shaderFile, outputFile, platform, shaderType, varyingDef, includeDir)
+
+		if shaderType ~= "" then
+			print("Compiling shader: " .. command)
+			if os.host() == "windows" then
+				os.execute('powershell -Command "' .. command .. '"')
+			else
+				os.execute(command)
+			end
+		end
+
+    end
+end
+
 project "voxels"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++14"
+	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
 	files { "src/**.h", "src/**.cpp" }
@@ -70,11 +122,13 @@ project "voxels"
 	filter "system:macosx" links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
 	filter "system:windows" links { "gdi32", "kernel32", "psapi" }
 	setBxCompat()
+    compileShaders()
+    
 	
 project "bgfx"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++14"
+	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
 	defines "__STDC_FORMAT_MACROS"
@@ -116,7 +170,7 @@ project "bgfx"
 project "bimg"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++14"
+	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
 	files
@@ -139,7 +193,7 @@ project "bimg"
 project "bx"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++14"
+	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
 	defines "__STDC_FORMAT_MACROS"

@@ -9,7 +9,9 @@
 #elif BX_PLATFORM_OSX
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
+#if BX_PLATFORM_WINDOWS
 #include <GLFW/glfw3native.h>
+#endif
 #include "log.h"
 #include <iostream>
 
@@ -37,15 +39,23 @@ namespace Window {
         // Disable cursor
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+        // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // or 4, depending on your needs
+        // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
+        // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
         bgfxInit.type = bgfx::RendererType::Count;
         bgfxInit.resolution.width = 1920;
         bgfxInit.resolution.height = 1080;
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
+        bgfxInit.debug = BGFX_DEBUG_IFH;
 
         #if BX_PLATFORM_WINDOWS
             bgfxInit.platformData.nwh = glfwGetWin32Window(window);
+
         #elif BX_PLATFORM_LINUX
             bgfxInit.platformData.ndt = glfwGetX11Display();
             bgfxInit.platformData.nwh = (void*)(uintptr_t)glfwGetX11Window(window);
@@ -61,8 +71,6 @@ namespace Window {
 	    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
 
         glfwGetWindowSize(window, &Window::width, &Window::height);
-        std::cout << Window::width << "\n";
-
     }
 
     void shutdown() {
