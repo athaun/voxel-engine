@@ -44,6 +44,8 @@ function setBxCompat()
 		includedirs { path.join(BX_DIR, "include/compat/msvc") }
 	filter { "system:windows", "action:gmake" }
 		includedirs { path.join(BX_DIR, "include/compat/mingw") }
+    filter { "system:windows"}
+		buildoptions { "/Zc:__cplusplus", "/Zc:preprocessor" }
 	filter { "system:macosx" }
 		includedirs { path.join(BX_DIR, "include/compat/osx") }
 		buildoptions { "-x objective-c++" }
@@ -65,6 +67,7 @@ function compileShaders()
 	local outputDir = path.join("build", "shaders")
 	local commonDir = path.join(BGFX_DIR, "examples", "common")
 	local varyingDef = path.join(shaderDir)
+	local profilePrefix = ""
 	
 	-- Clean the output directory
 	if os.isdir(outputDir) then
@@ -79,15 +82,18 @@ function compileShaders()
         local shaderType = ""
         if string.find(shaderFile, "v_") then
             shaderType = "vertex"
+			profilePrefix = "vs_5_0"
         elseif string.find(shaderFile, "f_") then
             shaderType = "fragment"
+			profilePrefix = "ps_5_0"
         elseif string.find(shaderFile, "c_") then
             shaderType = "compute"
+			profilePrefix = "cs_5_0"
         end
 
 		-- Compile the shader then output the binary to the output directory
 		local outputFile = path.join(outputDir, path.getbasename(shaderFile) .. ".bin")
-		local command = string.format('"%s" -f "%s" -o "%s" --platform %s --type %s --varyingdef "%s/varying.def.sc" ---verbose --profile s_5_0 -O 3 -i "%s"', shadercPath, shaderFile, outputFile, platform, shaderType, varyingDef, includeDir)
+		local command = string.format('"%s" -f "%s" -o "%s" --profile %s --platform %s --type %s --varyingdef "%s/varying.def.sc" -O 3 -i "%s" "%s"', shadercPath, shaderFile, outputFile, profilePrefix, platform, shaderType, varyingDef, includeDir, shaderDir)
 
 		if shaderType ~= "" then
 			print("Compiling shader: " .. command)
@@ -108,6 +114,7 @@ project "voxels"
 	exceptionhandling "Off"
 	rtti "Off"
 	files { "src/**.h", "src/**.cpp" }
+	defines { "BX_CONFIG_DEBUG=1" }
 	includedirs {
 		"src",
 		"src/core",
@@ -120,7 +127,8 @@ project "voxels"
 	links { "bgfx", "bimg", "bx", "glfw" }
 	filter "system:linux" links { "dl", "GL", "pthread", "X11" }
 	filter "system:macosx" links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
-	filter "system:windows" links { "gdi32", "kernel32", "psapi" }
+	filter "system:windows" 
+        links { "gdi32", "kernel32", "psapi" }
 	setBxCompat()
     compileShaders()
     
@@ -131,7 +139,8 @@ project "bgfx"
 	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
-	defines "__STDC_FORMAT_MACROS"
+	
+	defines { "BX_CONFIG_DEBUG=1", "__STDC_FORMAT_MACROS" }
 	files
 	{
 		path.join(BGFX_DIR, "include/bgfx/**.h"),
@@ -148,11 +157,14 @@ project "bgfx"
 		path.join(BIMG_DIR, "include"),
 		path.join(BGFX_DIR, "include"),
 		path.join(BGFX_DIR, "3rdparty"),
-		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
-		path.join(BGFX_DIR, "3rdparty/khronos")
+		path.join(BGFX_DIR, "3rdparty/directx-headers/include"),
+		path.join(BGFX_DIR, "3rdparty/directx-headers/include/directx"),
+		path.join(BGFX_DIR, "3rdparty/khronos"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/**.cpp"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/**.h"),
 	}
-	filter "configurations:Debug"
-		defines "BGFX_CONFIG_DEBUG=1"
+	-- filter "configurations:Debug"
+	defines { "BGFX_CONFIG_DEBUG=1", "BX_CONFIG_DEBUG=1" }
 	filter "action:vs*"
 		defines "_CRT_SECURE_NO_WARNINGS"
 		excludes
@@ -173,20 +185,21 @@ project "bimg"
 	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
+	defines { "BX_CONFIG_DEBUG=1", }
 	files
 	{
 		path.join(BIMG_DIR, "include/bimg/*.h"),
 		path.join(BIMG_DIR, "src/image.cpp"),
 		path.join(BIMG_DIR, "src/image_gnf.cpp"),
 		path.join(BIMG_DIR, "src/*.h"),
-		path.join(BIMG_DIR, "3rdparty/astc-codec/src/decoder/*.cc")
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/**.cpp"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/source/**.h"),
 	}
 	includedirs
 	{
 		path.join(BX_DIR, "include"),
 		path.join(BIMG_DIR, "include"),
-		path.join(BIMG_DIR, "3rdparty/astc-codec"),
-		path.join(BIMG_DIR, "3rdparty/astc-codec/include"),
+		path.join(BIMG_DIR, "3rdparty/astc-encoder/include"),
 	}
 	setBxCompat()
 
@@ -196,7 +209,7 @@ project "bx"
 	cppdialect "C++17"
 	exceptionhandling "Off"
 	rtti "Off"
-	defines "__STDC_FORMAT_MACROS"
+	defines { "__STDC_FORMAT_MACROS", "BX_CONFIG_DEBUG" }
 	files
 	{
 		path.join(BX_DIR, "include/bx/*.h"),
@@ -222,16 +235,26 @@ project "glfw"
 	language "C"
 	files
 	{
-		path.join(GLFW_DIR, "include/GLFW/*.h"),
+		path.join(GLFW_DIR, "include/GLFW/glfw3.h"),
+		path.join(GLFW_DIR, "include/GLFW/glfw3native.h"),
+		path.join(GLFW_DIR, "src/internal.h"),
+		path.join(GLFW_DIR, "src/platform.h"),
+		path.join(GLFW_DIR, "src/mappings.h"),
 		path.join(GLFW_DIR, "src/context.c"),
-		path.join(GLFW_DIR, "src/egl_context.*"),
 		path.join(GLFW_DIR, "src/init.c"),
 		path.join(GLFW_DIR, "src/input.c"),
-		path.join(GLFW_DIR, "src/internal.h"),
 		path.join(GLFW_DIR, "src/monitor.c"),
-		path.join(GLFW_DIR, "src/osmesa_context.*"),
+		path.join(GLFW_DIR, "src/platform.c"),
 		path.join(GLFW_DIR, "src/vulkan.c"),
 		path.join(GLFW_DIR, "src/window.c"),
+		path.join(GLFW_DIR, "src/egl_context.c"),
+		path.join(GLFW_DIR, "src/osmesa_context.c"),
+		path.join(GLFW_DIR, "src/null_platform.h"),
+		path.join(GLFW_DIR, "src/null_joystick.h"),
+		path.join(GLFW_DIR, "src/null_init.c"),
+		path.join(GLFW_DIR, "src/null_monitor.c"),
+		path.join(GLFW_DIR, "src/null_window.c"),
+		path.join(GLFW_DIR, "src/null_joystick.c"),
 	}
 	includedirs { path.join(GLFW_DIR, "include") }
 	filter "system:windows"

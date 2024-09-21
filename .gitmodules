@@ -1,0 +1,12 @@
+[submodule "glfw"]
+	path = lib/glfw
+	url = https://github.com/glfw/glfw
+[submodule "bx"]
+	path = lib/bx
+	url = https://github.com/bkaradzic/bx
+[submodule "bimg"]
+	path = lib/bimg
+	url = https://github.com/bkaradzic/bimg/
+[submodule "bgfx"]
+	path = lib/bgfx
+	url = https://github.com/bkaradzic/bgfx/

@@ -87,24 +87,27 @@ class Batch {
     }
 
     const bgfx::ProgramHandle load_shader(const char *shader_name) {
-        std::string vertex_shader_path =
-            std::filesystem::absolute(std::string("build/shaders/v_") + shader_name + ".bin")
-                .string();
-        std::string fragment_shader_path =
-            std::filesystem::absolute(std::string("build/shaders/f_") + shader_name + ".bin")
-                .string();
+        std::string vertex_shader_path = std::filesystem::absolute(std::string("build/shaders/v_") + shader_name + ".bin").string();
+        std::string fragment_shader_path = std::filesystem::absolute(std::string("build/shaders/f_") + shader_name + ".bin").string();
 
         std::ifstream vertex_shader_file(vertex_shader_path, std::ios::binary | std::ios::ate);
         std::ifstream fragment_shader_file(fragment_shader_path, std::ios::binary | std::ios::ate);
 
-        if (!vertex_shader_file || !fragment_shader_file) {
-            Log::error("Failed to open shader files " + vertex_shader_path + " and " +
-                       fragment_shader_path);
+        if (!vertex_shader_file) {
+            Log::error("Failed to open vertex shader file " + vertex_shader_path);
+            return bgfx::ProgramHandle();
+        }
+
+        if (!fragment_shader_file) {
+            Log::error("Failed to open fragment shader file " + fragment_shader_path);
             return bgfx::ProgramHandle();
         }
 
         std::streampos vertex_shader_size = vertex_shader_file.tellg();
         std::streampos fragment_shader_size = fragment_shader_file.tellg();
+
+        std::cout << "vertex_shader_size: " << vertex_shader_size << std::endl;
+        std::cout << "fragment_shader_size: " << fragment_shader_size << std::endl;
 
         vertex_shader_file.seekg(0, std::ios::beg);
         fragment_shader_file.seekg(0, std::ios::beg);
@@ -112,28 +115,41 @@ class Batch {
         std::vector<char> vertex_shader_data(vertex_shader_size);
         std::vector<char> fragment_shader_data(fragment_shader_size);
 
-        if (!vertex_shader_file.read(vertex_shader_data.data(), vertex_shader_size) ||
-            !fragment_shader_file.read(fragment_shader_data.data(), fragment_shader_size)) {
-            Log::error("Failed to read shader files");
+        if (!vertex_shader_file.read(vertex_shader_data.data(), vertex_shader_size)) {
+            Log::error("Failed to read vertex shader file");
+            return bgfx::ProgramHandle();
+        }
+
+        if (!fragment_shader_file.read(fragment_shader_data.data(), fragment_shader_size)) {
+            Log::error("Failed to read fragment shader file");
             return bgfx::ProgramHandle();
         }
 
         vertex_shader_file.close();
         fragment_shader_file.close();
 
-        const bgfx::Memory *vertex_shader_mem =
-            bgfx::copy(vertex_shader_data.data(), static_cast<uint32_t>(vertex_shader_size));
-        const bgfx::Memory *fragment_shader_mem =
-            bgfx::copy(fragment_shader_data.data(), static_cast<uint32_t>(fragment_shader_size));
+        const bgfx::Memory *vertex_shader_mem = bgfx::copy(vertex_shader_data.data(), static_cast<uint32_t>(vertex_shader_size));
+        const bgfx::Memory *fragment_shader_mem = bgfx::copy(fragment_shader_data.data(), static_cast<uint32_t>(fragment_shader_size));
+
+        std::cout << "vertex_shader_mem size: " << vertex_shader_mem->size << std::endl;
+        std::cout << "fragment_shader_mem size: " << fragment_shader_mem->size << std::endl;
+
 
         bgfx::ShaderHandle vertex_shader = bgfx::createShader(vertex_shader_mem);
         bgfx::ShaderHandle fragment_shader = bgfx::createShader(fragment_shader_mem);
 
         // Check if shaders are valid
-        if (!bgfx::isValid(vertex_shader) || !bgfx::isValid(fragment_shader)) {
-            Log::error("Failed to create shaders");
+        if (!bgfx::isValid(vertex_shader)) {
+            Log::error("Failed to create vertex shader");
             return bgfx::ProgramHandle();
         }
+
+        if (!bgfx::isValid(fragment_shader)) {
+            Log::error("Failed to create fragment shader");
+            return bgfx::ProgramHandle();
+        }
+
+        Log::info("Loaded shaders " + vertex_shader_path + " and " + fragment_shader_path);
 
         return bgfx::createProgram(vertex_shader, fragment_shader, false);
     }

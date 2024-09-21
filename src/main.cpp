@@ -53,9 +53,6 @@ bgfx::ShaderHandle loadShader(const char* FILENAME) {
 
     switch (bgfx::getRendererType()) {
         case bgfx::RendererType::Noop:
-        case bgfx::RendererType::Direct3D9:
-            shaderPath = "src/shaders/dx9/";
-            break;
         case bgfx::RendererType::Direct3D11:
         case bgfx::RendererType::Direct3D12:
             shaderPath = "src/shaders/dx11/";
@@ -116,9 +113,9 @@ int main(int argc, char** argv) {
 
     Core::init();
 
-    // bgfx::ShaderHandle vsh = loadShader("v_cubes.bin");
-    // bgfx::ShaderHandle fsh = loadShader("f_cubes.bin");
-    // bgfx::ProgramHandle program = bgfx::createProgram(vsh, fsh, true);
+    //bgfx::ShaderHandle vsh = loadShader("v_cubes.bin");
+    //bgfx::ShaderHandle fsh = loadShader("f_cubes.bin");
+    //bgfx::ProgramHandle program = bgfx::createProgram(vsh, fsh, true);
 
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);

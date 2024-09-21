@@ -1,19 +1,19 @@
-#include "window.h"
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <GLFW/glfw3.h>
+#include <bx/platform.h>
+#include <iostream>
 #if BX_PLATFORM_LINUX
 #define GLFW_EXPOSE_NATIVE_X11
 #elif BX_PLATFORM_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 #elif BX_PLATFORM_OSX
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
-#if BX_PLATFORM_WINDOWS
-#include <GLFW/glfw3native.h>
-#endif
+
+#include "window.h"
 #include "log.h"
-#include <iostream>
 
 namespace Window {
     static GLFWwindow* window = nullptr;
@@ -40,7 +40,7 @@ namespace Window {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // or 4, depending on your needs
+        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
         // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -53,9 +53,10 @@ namespace Window {
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
         bgfxInit.debug = BGFX_DEBUG_IFH;
 
+        bgfxInit.platformData.ndt = nullptr;
         #if BX_PLATFORM_WINDOWS
+            Log::info("Windows platform detected for BGFX"); 
             bgfxInit.platformData.nwh = glfwGetWin32Window(window);
-
         #elif BX_PLATFORM_LINUX
             bgfxInit.platformData.ndt = glfwGetX11Display();
             bgfxInit.platformData.nwh = (void*)(uintptr_t)glfwGetX11Window(window);
