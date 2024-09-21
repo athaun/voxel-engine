@@ -106,9 +106,6 @@ class Batch {
         std::streampos vertex_shader_size = vertex_shader_file.tellg();
         std::streampos fragment_shader_size = fragment_shader_file.tellg();
 
-        std::cout << "vertex_shader_size: " << vertex_shader_size << std::endl;
-        std::cout << "fragment_shader_size: " << fragment_shader_size << std::endl;
-
         vertex_shader_file.seekg(0, std::ios::beg);
         fragment_shader_file.seekg(0, std::ios::beg);
 
@@ -130,10 +127,6 @@ class Batch {
 
         const bgfx::Memory *vertex_shader_mem = bgfx::copy(vertex_shader_data.data(), static_cast<uint32_t>(vertex_shader_size));
         const bgfx::Memory *fragment_shader_mem = bgfx::copy(fragment_shader_data.data(), static_cast<uint32_t>(fragment_shader_size));
-
-        std::cout << "vertex_shader_mem size: " << vertex_shader_mem->size << std::endl;
-        std::cout << "fragment_shader_mem size: " << fragment_shader_mem->size << std::endl;
-
 
         bgfx::ShaderHandle vertex_shader = bgfx::createShader(vertex_shader_mem);
         bgfx::ShaderHandle fragment_shader = bgfx::createShader(fragment_shader_mem);

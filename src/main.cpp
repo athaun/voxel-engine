@@ -21,101 +21,9 @@ float mouseSensitivity = 0.004f;  // Change this if you want to modify the sensi
 bx::Vec3 forward(0.0f, 0.0f, 1.0f);
 bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
-// Make the cube ////////////////////////
-struct PosColorVertex {
-    float x;
-    float y;
-    float z;
-    uint32_t abgr;
-};
-
-static PosColorVertex cubeVertices[] = {
-    {-1.0f, 1.0f, 1.0f, 0xff000000},   {1.0f, 1.0f, 1.0f, 0xff0000ff},
-    {-1.0f, -1.0f, 1.0f, 0xff00ff00},  {1.0f, -1.0f, 1.0f, 0xff00ffff},
-    {-1.0f, 1.0f, -1.0f, 0xffff0000},  {1.0f, 1.0f, -1.0f, 0xffff00ff},
-    {-1.0f, -1.0f, -1.0f, 0xffffff00}, {1.0f, -1.0f, -1.0f, 0xffffffff},
-};
-
-static const uint16_t cubeTriList[] = {
-    0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
-    1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
-};
-////////////////////////////////////////
-
-char* absolute_path(const char* relativePath) {
-    char* absPath = _fullpath(nullptr, relativePath, _MAX_PATH);
-    return absPath;
-}
-
-// Load in Shader
-bgfx::ShaderHandle loadShader(const char* FILENAME) {
-    const char* shaderPath = nullptr;
-
-    switch (bgfx::getRendererType()) {
-        case bgfx::RendererType::Noop:
-        case bgfx::RendererType::Direct3D11:
-        case bgfx::RendererType::Direct3D12:
-            shaderPath = "src/shaders/dx11/";
-            break;
-        case bgfx::RendererType::Gnm:
-            shaderPath = "src/shaders/pssl/";
-            break;
-        case bgfx::RendererType::Metal:
-            shaderPath = "src/shaders/metal/";
-            break;
-        case bgfx::RendererType::OpenGL:
-            shaderPath = "src/shaders/glsl/";
-            break;
-        case bgfx::RendererType::OpenGLES:
-            shaderPath = "src/shaders/essl/";
-            break;
-        case bgfx::RendererType::Vulkan:
-            shaderPath = "src/shaders/spirv/";
-            break;
-    }
-
-    shaderPath = "build/shaders/";
-
-    size_t shaderLen = strlen(shaderPath);
-    size_t fileLen = strlen(FILENAME);
-    char* relativePath = (char*)malloc(shaderLen + fileLen + 1);
-    memcpy(relativePath, shaderPath, shaderLen);
-    memcpy(&relativePath[shaderLen], FILENAME, fileLen);
-    relativePath[shaderLen + fileLen] = '\0';  // null terminator
-
-    char* filePath = absolute_path(relativePath);
-    free(relativePath);
-
-    Log::info(filePath);
-    FILE* file = fopen(filePath, "rb");
-    if (!file) {
-        Log::error("Failed to open file:");
-        Log::error(filePath);
-        free(filePath);
-        return BGFX_INVALID_HANDLE;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    const bgfx::Memory* mem = bgfx::alloc(fileSize + 1);
-    fread(mem->data, 1, fileSize, file);
-    mem->data[mem->size - 1] = '\0';
-    fclose(file);
-
-    free(filePath);
-
-    return bgfx::createShader(mem);
-}
-
 int main(int argc, char** argv) {
 
     Core::init();
-
-    //bgfx::ShaderHandle vsh = loadShader("v_cubes.bin");
-    //bgfx::ShaderHandle fsh = loadShader("f_cubes.bin");
-    //bgfx::ProgramHandle program = bgfx::createProgram(vsh, fsh, true);
 
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
@@ -125,21 +33,32 @@ int main(int argc, char** argv) {
 
     Render::Mesh cube;
     cube.vertices = {
-        {-1.0f, 1.0f, 1.0f, 0xff000000},   {1.0f, 1.0f, 1.0f, 0xff0000ff},
-        {-1.0f, -1.0f, 1.0f, 0xff00ff00},  {1.0f, -1.0f, 1.0f, 0xff00ffff},
-        {-1.0f, 1.0f, -1.0f, 0xffff0000},  {1.0f, 1.0f, -1.0f, 0xffff00ff},
-        {-1.0f, -1.0f, -1.0f, 0xffffff00}, {1.0f, -1.0f, -1.0f, 0xffffffff},
+        {-1.0f,  1.0f,  1.0f, 0xff000000},
+        { 1.0f,  1.0f,  1.0f, 0xff0000ff},
+        {-1.0f, -1.0f,  1.0f, 0xff00ff00},
+        { 1.0f, -1.0f,  1.0f, 0xff00ffff},
+        {-1.0f,  1.0f, -1.0f, 0xffff0000},
+        { 1.0f,  1.0f, -1.0f, 0xffff00ff},
+        {-1.0f, -1.0f, -1.0f, 0xffffff00},
+        { 1.0f, -1.0f, -1.0f, 0xffffffff},
     };
     cube.vertexIndices = {
-        0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
-        1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
+        0, 1, 2,
+        1, 3, 2,
+        4, 6, 5,
+        5, 6, 7,
+        0, 2, 4,
+        4, 2, 6,
+        1, 5, 3,
+        5, 7, 3,
+        0, 4, 1,
+        4, 5, 1,
+        2, 3, 6,
+        6, 3, 7,
     };
 
-    bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(
-        bgfx::makeRef(cube.vertices.data(), sizeof(Render::Vertex) * cube.vertices.size()),
-        Render::Vertex::init());
-    bgfx::IndexBufferHandle ibh = bgfx::createIndexBuffer(
-        bgfx::makeRef(cube.vertexIndices.data(), sizeof(uint16_t) * cube.vertexIndices.size()));
+    bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(bgfx::makeRef(cube.vertices.data(), sizeof(Render::Vertex) * cube.vertices.size()), Render::Vertex::init());
+    bgfx::IndexBufferHandle ibh = bgfx::createIndexBuffer(bgfx::makeRef(cube.vertexIndices.data(), sizeof(uint16_t) * cube.vertexIndices.size()));
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -241,19 +160,14 @@ int main(int argc, char** argv) {
 
         // Set up projection matrix
         float proj[16];
-        bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f,
-                    bgfx::getCaps()->homogeneousDepth);
+        bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
         bgfx::setViewTransform(0, view, proj);
-
-        float mtx[16];
-        bgfx::setTransform(mtx);  // Apply rotation to the cube
 
         bgfx::setVertexBuffer(0, vbh);
         bgfx::setIndexBuffer(ibh);
         bgfx::submit(0, program);
 
-        bgfx::frame();
-        // Window::end_update();
+        Window::end_update();
     }
     Core::shutdown();
     return 0;
