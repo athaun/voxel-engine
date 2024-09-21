@@ -28,8 +28,7 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    Render::Batch b = Render::Batch(10, 10);
-    bgfx::ProgramHandle program = b.load_shader("cubes");
+    Render::Batch batch(100, 100, "cubes");
 
     Render::Mesh cube;
     cube.vertices = {
@@ -56,9 +55,18 @@ int main(int argc, char** argv) {
         2, 3, 6,
         6, 3, 7,
     };
+    batch.push_mesh(cube);
 
-    bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(bgfx::makeRef(cube.vertices.data(), sizeof(Render::Vertex) * cube.vertices.size()), Render::Vertex::init());
-    bgfx::IndexBufferHandle ibh = bgfx::createIndexBuffer(bgfx::makeRef(cube.vertexIndices.data(), sizeof(uint16_t) * cube.vertexIndices.size()));
+    // Render::Mesh triangle;
+    // triangle.vertices = {
+    //     {0.0f,  2.0f,  0.0f, 0xff00ff00},  // Top vertex (green)
+    //     {-2.0f, -2.0f,  0.0f, 0xff0000ff}, // Bottom-left vertex (blue)
+    //     {2.0f, -2.0f,  0.0f, 0xffff0000},  // Bottom-right vertex (red)
+    // };
+    // triangle.vertexIndices = {
+    //     0, 1, 2,
+    // };
+    // batch.push_mesh(triangle);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -73,19 +81,19 @@ int main(int argc, char** argv) {
     while (!Window::should_close()) {
         Window::begin_update();
 
-        // Handle camera movement
-        bx::Vec3 forward = {sinf(cameraYaw) * cosf(cameraPitch), sinf(cameraPitch),
-                            cosf(cameraYaw) * cosf(cameraPitch)};
-
-        bx::Vec3 right = {cosf(cameraYaw), 0.0f,
-                          -sinf(cameraYaw)};  // Right direction (perpendicular to forward)
-
-        // Normalize directions manually
-        // (Since bx doesn't have a vec3normalize.....)
-        bx::Vec3 normForward = normalize(forward);
-        bx::Vec3 normRight = normalize(right);
-
         {
+            // Handle camera movement
+            bx::Vec3 forward = {sinf(cameraYaw) * cosf(cameraPitch), sinf(cameraPitch),
+                                cosf(cameraYaw) * cosf(cameraPitch)};
+
+            bx::Vec3 right = {cosf(cameraYaw), 0.0f,
+                            -sinf(cameraYaw)};  // Right direction (perpendicular to forward)
+
+            // Normalize directions manually
+            // (Since bx doesn't have a vec3normalize.....)
+            bx::Vec3 normForward = normalize(forward);
+            bx::Vec3 normRight = normalize(right);
+
             // Movement speed applied to direction vectors
             // WASD stuff, with extras :D
             // Change the new forward position accordingly so forward is relative to where the
@@ -144,28 +152,26 @@ int main(int argc, char** argv) {
             // Redefine last mouse position to be current before frame ends
             lastMouseX = mouseX;
             lastMouseY = mouseY;
+        
+            // Define camera position and target vectors
+            bx::Vec3 eye = {cameraPosX, cameraPosY, cameraPosZ};
+            bx::Vec3 at = {cameraPosX + sinf(cameraYaw) * cosf(cameraPitch),
+                        cameraPosY + sinf(cameraPitch),
+                        cameraPosZ + cosf(cameraYaw) * cosf(cameraPitch)};
+
+            // Up vector (typically, this is (0, 1, 0) for a standard upright camera)
+            bx::Vec3 up = {0.0f, 1.0f, 0.0f};
+
+            float view[16];
+            bx::mtxLookAt(view, eye, at, up);
+
+            // Set up projection matrix
+            float proj[16];
+            bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
+            bgfx::setViewTransform(0, view, proj);
         }
 
-        // Define camera position and target vectors
-        bx::Vec3 eye = {cameraPosX, cameraPosY, cameraPosZ};
-        bx::Vec3 at = {cameraPosX + sinf(cameraYaw) * cosf(cameraPitch),
-                       cameraPosY + sinf(cameraPitch),
-                       cameraPosZ + cosf(cameraYaw) * cosf(cameraPitch)};
-
-        // Up vector (typically, this is (0, 1, 0) for a standard upright camera)
-        bx::Vec3 up = {0.0f, 1.0f, 0.0f};
-
-        float view[16];
-        bx::mtxLookAt(view, eye, at, up);
-
-        // Set up projection matrix
-        float proj[16];
-        bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
-        bgfx::setViewTransform(0, view, proj);
-
-        bgfx::setVertexBuffer(0, vbh);
-        bgfx::setIndexBuffer(ibh);
-        bgfx::submit(0, program);
+        batch.submit();
 
         Window::end_update();
     }

@@ -7,11 +7,13 @@
 #include <fstream>
 #include <vector>
 
+#include "log.h"
+
 namespace Render {
 
 typedef struct Vertex {
     float x, y, z;  // Position
-    // float u, v;     // Texture coordinates
+    // float u, v;  // Texture coordinates
     uint32_t color;
     static bgfx::VertexLayout init() {
         bgfx::VertexLayout layout;
@@ -34,135 +36,30 @@ typedef struct Mesh {
 };
 
 class Batch {
-   public:
-    Batch(unsigned int maxVertices, unsigned int maxIndices) {
-        // this->maxVertices = maxVertices;
-        // this->maxIndices = maxIndices;
-        // this->usedVertices = 0;
-        // this->usedIndices = 0;
-
-        // // Initialize vertex layout
-        // Vertex::init();
-
-        // // Create dynamic vertex and index buffers
-        // vertexBuffer = bgfx::createDynamicVertexBuffer(maxVertices, Vertex::layout);
-        // indexBuffer = bgfx::createDynamicIndexBuffer(maxIndices);
-
-        // // Load shaders
-        // program = loadProgram("vs_batch", "fs_batch");
-
-        // // Initialize transform uniform
-        // transform = bgfx::createUniform("u_transform", bgfx::UniformType::Mat4);
-    }
-
-    ~Batch() {
-        // bgfx::destroy(vertexBuffer);
-        // bgfx::destroy(indexBuffer);
-        // bgfx::destroy(program);
-        // bgfx::destroy(transform);
-    }
-
-    void begin() {
-        // usedVertices = 0;
-        // usedIndices = 0;
-        // textures.clear();
-    }
-
-    void end() {
-        // // Submit the batch
-        // bgfx::setVertexBuffer(0, vertexBuffer, 0, usedVertices);
-        // bgfx::setIndexBuffer(indexBuffer, 0, usedIndices);
-        // bgfx::submit(0, program);
-    }
-
-    void drawQuad(const Vertex *vertices, const uint16_t *indices, bgfx::TextureHandle texture) {
-        // // Update vertex and index buffers
-        // bgfx::update(vertexBuffer, usedVertices, bgfx::makeRef(vertices, sizeof(Vertex) * 4));
-        // bgfx::update(indexBuffer, usedIndices, bgfx::makeRef(indices, sizeof(uint16_t) * 6));
-        // usedVertices += 4;
-        // usedIndices += 6;
-
-        // // Add texture to the batch
-        // addTexture(texture);
-    }
-
-    const bgfx::ProgramHandle load_shader(const char *shader_name) {
-        std::string vertex_shader_path = std::filesystem::absolute(std::string("build/shaders/v_") + shader_name + ".bin").string();
-        std::string fragment_shader_path = std::filesystem::absolute(std::string("build/shaders/f_") + shader_name + ".bin").string();
-
-        std::ifstream vertex_shader_file(vertex_shader_path, std::ios::binary | std::ios::ate);
-        std::ifstream fragment_shader_file(fragment_shader_path, std::ios::binary | std::ios::ate);
-
-        if (!vertex_shader_file) {
-            Log::error("Failed to open vertex shader file " + vertex_shader_path);
-            return bgfx::ProgramHandle();
-        }
-
-        if (!fragment_shader_file) {
-            Log::error("Failed to open fragment shader file " + fragment_shader_path);
-            return bgfx::ProgramHandle();
-        }
-
-        std::streampos vertex_shader_size = vertex_shader_file.tellg();
-        std::streampos fragment_shader_size = fragment_shader_file.tellg();
-
-        vertex_shader_file.seekg(0, std::ios::beg);
-        fragment_shader_file.seekg(0, std::ios::beg);
-
-        std::vector<char> vertex_shader_data(vertex_shader_size);
-        std::vector<char> fragment_shader_data(fragment_shader_size);
-
-        if (!vertex_shader_file.read(vertex_shader_data.data(), vertex_shader_size)) {
-            Log::error("Failed to read vertex shader file");
-            return bgfx::ProgramHandle();
-        }
-
-        if (!fragment_shader_file.read(fragment_shader_data.data(), fragment_shader_size)) {
-            Log::error("Failed to read fragment shader file");
-            return bgfx::ProgramHandle();
-        }
-
-        vertex_shader_file.close();
-        fragment_shader_file.close();
-
-        const bgfx::Memory *vertex_shader_mem = bgfx::copy(vertex_shader_data.data(), static_cast<uint32_t>(vertex_shader_size));
-        const bgfx::Memory *fragment_shader_mem = bgfx::copy(fragment_shader_data.data(), static_cast<uint32_t>(fragment_shader_size));
-
-        bgfx::ShaderHandle vertex_shader = bgfx::createShader(vertex_shader_mem);
-        bgfx::ShaderHandle fragment_shader = bgfx::createShader(fragment_shader_mem);
-
-        // Check if shaders are valid
-        if (!bgfx::isValid(vertex_shader)) {
-            Log::error("Failed to create vertex shader");
-            return bgfx::ProgramHandle();
-        }
-
-        if (!bgfx::isValid(fragment_shader)) {
-            Log::error("Failed to create fragment shader");
-            return bgfx::ProgramHandle();
-        }
-
-        Log::info("Loaded shaders " + vertex_shader_path + " and " + fragment_shader_path);
-
-        return bgfx::createProgram(vertex_shader, fragment_shader, false);
-    }
-
    private:
-    // unsigned int maxVertices;
-    // unsigned int maxIndices;
-    // unsigned int usedVertices;
-    // unsigned int usedIndices;
+    unsigned long max_vertices;
+    unsigned long max_indices;
+    unsigned long used_vertices;
+    unsigned long used_indices;
 
-    // bgfx::DynamicVertexBufferHandle vertexBuffer;
-    // bgfx::DynamicIndexBufferHandle indexBuffer;
-    // bgfx::ProgramHandle program;
-    // bgfx::UniformHandle transform;
-    // std::vector<bgfx::TextureHandle> textures;
+    bgfx::DynamicVertexBufferHandle vertex_buffer;
+    bgfx::DynamicIndexBufferHandle index_buffer;
 
-    void addTexture(bgfx::TextureHandle texture) {
-        // if (std::find(textures.begin(), textures.end(), texture) == textures.end()) {
-        //     textures.push_back(texture);
-        // }
-    }
+    bgfx::ProgramHandle shader_program;
+
+    std::vector<Mesh> meshes;
+
+   public:
+    Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name);
+    ~Batch();
+
+    void submit();
+
+    bool push_mesh (Mesh mesh);
+
+    bool push_triangle(Vertex v1, Vertex v2, Vertex v3);
+   
+   private:
+    const bgfx::ProgramHandle load_shader(const char *shader_name);
 };
 }  // namespace Render
