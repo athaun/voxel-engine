@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    Render::Batch batch(100, 100, "cubes");
+    Render::Batch batch(1000, 1000, "cubes");
 
     Render::Mesh cube;
     cube.vertices = {
@@ -57,16 +57,23 @@ int main(int argc, char** argv) {
     };
     batch.push_mesh(cube);
 
-    // Render::Mesh triangle;
-    // triangle.vertices = {
-    //     {0.0f,  2.0f,  0.0f, 0xff00ff00},  // Top vertex (green)
-    //     {-2.0f, -2.0f,  0.0f, 0xff0000ff}, // Bottom-left vertex (blue)
-    //     {2.0f, -2.0f,  0.0f, 0xffff0000},  // Bottom-right vertex (red)
-    // };
-    // triangle.vertexIndices = {
-    //     0, 1, 2,
-    // };
-    // batch.push_mesh(triangle);
+    Render::Mesh cube2(cube);
+    // Move the second cube to the right
+    for (auto& vertex : cube2.vertices) {
+        vertex.x += 3.0f;
+    }
+    batch.push_mesh(cube2);
+
+    Render::Mesh triangle;
+    triangle.vertices = {
+        {0.0f,  2.0f,  0.0f, 0xff00ff00},  // Top vertex (green)
+        {-2.0f, -2.0f,  0.0f, 0xff0000ff}, // Bottom-left vertex (blue)
+        {2.0f, -2.0f,  0.0f, 0xffff0000},  // Bottom-right vertex (red)
+    };
+    triangle.vertexIndices = {
+        0, 1, 2,
+    };
+    batch.push_mesh(triangle);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the

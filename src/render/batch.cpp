@@ -12,7 +12,6 @@ Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *
     this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
     this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices);
 
-    // Load the shader program
     this->shader_program = load_shader(shader_name);
 }
 
@@ -31,6 +30,11 @@ void Batch::submit() {
 bool Batch::push_mesh (Mesh mesh) {
     if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertexIndices.size() > max_indices)) {
         return false;
+    }
+    
+    // Adjust indices to account for the existing vertices in the buffer
+    for (size_t i = 0; i < mesh.vertexIndices.size(); ++i) {
+        mesh.vertexIndices[i] += used_vertices; // Offset by the number of used vertices
     }
 
     bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
