@@ -6,6 +6,7 @@
 #include "core/core.h"
 #include "core/log.h"
 #include "render/batch.h"
+#include "render/geometry.h"
 
 // Camera position variables
 float cameraPosX = 0.0f;
@@ -28,52 +29,34 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    Render::Batch batch(1000, 1000, "cubes");
 
-    Render::Mesh cube;
-    cube.vertices = {
-        {-1.0f,  1.0f,  1.0f, 0xff000000},
-        { 1.0f,  1.0f,  1.0f, 0xff0000ff},
-        {-1.0f, -1.0f,  1.0f, 0xff00ff00},
-        { 1.0f, -1.0f,  1.0f, 0xff00ffff},
-        {-1.0f,  1.0f, -1.0f, 0xffff0000},
-        { 1.0f,  1.0f, -1.0f, 0xffff00ff},
-        {-1.0f, -1.0f, -1.0f, 0xffffff00},
-        { 1.0f, -1.0f, -1.0f, 0xffffffff},
-    };
-    cube.vertexIndices = {
-        0, 1, 2,
-        1, 3, 2,
-        4, 6, 5,
-        5, 6, 7,
-        0, 2, 4,
-        4, 2, 6,
-        1, 5, 3,
-        5, 7, 3,
-        0, 4, 1,
-        4, 5, 1,
-        2, 3, 6,
-        6, 3, 7,
-    };
+    int grid_size = 500;
+
+    int numCubes = grid_size * grid_size;
+    int verticesPerCube = 8;  // Assuming each cube has 8 vertices
+    int indicesPerCube = 36;  // Assuming each cube has 36 indices (12 triangles * 3 indices each)
+    Render::Batch batch(numCubes * verticesPerCube, numCubes * indicesPerCube, "cubes");
+
+    Render::Mesh cube = Render::cube(1.0f);
     batch.push_mesh(cube);
 
-    Render::Mesh cube2(cube);
-    // Move the second cube to the right
-    for (auto& vertex : cube2.vertices) {
-        vertex.x += 3.0f;
+    for (int x = 0; x < grid_size; ++x) {
+        for (int z = 0; z < grid_size; ++z) {
+            Render::Mesh c(cube);
+            batch.push_mesh(Render::transform_mesh(c, x * 3.0f, 0.0f, z * 3.0f));
+        }
     }
-    batch.push_mesh(cube2);
 
-    Render::Mesh triangle;
-    triangle.vertices = {
-        {0.0f,  2.0f,  0.0f, 0xff00ff00},  // Top vertex (green)
-        {-2.0f, -2.0f,  0.0f, 0xff0000ff}, // Bottom-left vertex (blue)
-        {2.0f, -2.0f,  0.0f, 0xffff0000},  // Bottom-right vertex (red)
-    };
-    triangle.vertexIndices = {
-        0, 1, 2,
-    };
-    batch.push_mesh(triangle);
+    // Render::Mesh triangle;
+    // triangle.vertices = {
+    //     { 0.0f,  2.0f, 0.0f, 0xff00ff00},
+    //     {-2.0f, -2.0f, 0.0f, 0xff0000ff},
+    //     { 2.0f, -2.0f, 0.0f, 0xffff0000},
+    // };
+    // triangle.vertexIndices = {
+    //     0, 1, 2,
+    // };
+    // batch.push_mesh(triangle);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -174,7 +157,7 @@ int main(int argc, char** argv) {
 
             // Set up projection matrix
             float proj[16];
-            bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
+            bx::mtxProj(proj, 60.0f, float(Window::width) / float(Window::height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
             bgfx::setViewTransform(0, view, proj);
         }
 
