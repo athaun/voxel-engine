@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Khronos Group Inc.
+// Copyright (c) 2018-2024 The Khronos Group Inc.
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and/or associated documentation files (the "Materials"),
@@ -69,11 +69,13 @@ enum OpenCLDebugInfo100Instructions {
     OpenCLDebugInfo100DebugMacroUndef = 33,
     OpenCLDebugInfo100DebugImportedEntity = 34,
     OpenCLDebugInfo100DebugSource = 35,
+    OpenCLDebugInfo100DebugModuleINTEL = 36,
     OpenCLDebugInfo100InstructionsMax = 0x7ffffff
 };
 
 
 enum OpenCLDebugInfo100DebugInfoFlags {
+    OpenCLDebugInfo100None = 0x0000,
     OpenCLDebugInfo100FlagIsProtected = 0x01,
     OpenCLDebugInfo100FlagIsPrivate = 0x02,
     OpenCLDebugInfo100FlagIsPublic = 0x03,

@@ -1,6 +1,6 @@
 --
--- Copyright 2010-2020 Branimir Karadzic. All rights reserved.
--- License: https://github.com/bkaradzic/bimg#license-bsd-2-clause
+-- Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+-- License: https://github.com/bkaradzic/bimg/blob/master/LICENSE
 --
 
 newoption {
@@ -16,6 +16,11 @@ newoption {
 newoption {
 	trigger = "with-tools",
 	description = "Enable building tools.",
+}
+
+newoption {
+	trigger = "with-libheif",
+	description = "Enable building with libheif HEIF and AVIF file format decoder.",
 }
 
 solution "bimg"
@@ -37,7 +42,6 @@ solution "bimg"
 	end
 
 	language "C++"
-	startproject "example-00-helloworld"
 
 MODULE_DIR = path.getabsolute("..")
 BIMG_DIR   = path.getabsolute("..")
@@ -64,11 +68,10 @@ function copyLib()
 end
 
 group "libs"
+dofile(path.join(BX_DIR, "scripts/bx.lua"))
 dofile "bimg.lua"
 dofile "bimg_decode.lua"
 dofile "bimg_encode.lua"
-
-dofile(path.join(BX_DIR, "scripts/bx.lua"))
 
 if _OPTIONS["with-tools"] then
 	group "tools"

@@ -14,7 +14,6 @@
 
 #include "source/opt/simplification_pass.h"
 
-#include <set>
 #include <unordered_set>
 #include <vector>
 
@@ -45,6 +44,10 @@ void SimplificationPass::AddNewOperands(
 }
 
 bool SimplificationPass::SimplifyFunction(Function* function) {
+  if (function->IsDeclaration()) {
+    return false;
+  }
+
   bool modified = false;
   // Phase 1: Traverse all instructions in dominance order.
   // The second phase will only be on the instructions whose inputs have changed
@@ -65,12 +68,12 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
        &folder, &inst_seen, this](BasicBlock* bb) {
         for (Instruction* inst = &*bb->begin(); inst; inst = inst->NextNode()) {
           inst_seen.insert(inst);
-          if (inst->opcode() == SpvOpPhi) {
+          if (inst->opcode() == spv::Op::OpPhi) {
             process_phis.insert(inst);
           }
 
           bool is_foldable_copy =
-              inst->opcode() == SpvOpCopyObject &&
+              inst->opcode() == spv::Op::OpCopyObject &&
               context()->get_decoration_mgr()->HaveSubsetOfDecorations(
                   inst->result_id(), inst->GetSingleWordInOperand(0));
 
@@ -87,7 +90,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
 
             AddNewOperands(inst, &inst_seen, &work_list);
 
-            if (inst->opcode() == SpvOpCopyObject) {
+            if (inst->opcode() == spv::Op::OpCopyObject) {
               context()->ReplaceAllUsesWithPredicate(
                   inst->result_id(), inst->GetSingleWordInOperand(0),
                   [](Instruction* user) {
@@ -100,7 +103,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
                   });
               inst_to_kill.insert(inst);
               in_work_list.insert(inst);
-            } else if (inst->opcode() == SpvOpNop) {
+            } else if (inst->opcode() == spv::Op::OpNop) {
               inst_to_kill.insert(inst);
               in_work_list.insert(inst);
             }
@@ -117,7 +120,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
     inst_seen.insert(inst);
 
     bool is_foldable_copy =
-        inst->opcode() == SpvOpCopyObject &&
+        inst->opcode() == spv::Op::OpCopyObject &&
         context()->get_decoration_mgr()->HaveSubsetOfDecorations(
             inst->result_id(), inst->GetSingleWordInOperand(0));
 
@@ -126,7 +129,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
       context()->AnalyzeUses(inst);
       get_def_use_mgr()->ForEachUser(
           inst, [&work_list, &in_work_list](Instruction* use) {
-            if (!use->IsDecoration() && use->opcode() != SpvOpName &&
+            if (!use->IsDecoration() && use->opcode() != spv::Op::OpName &&
                 in_work_list.insert(use).second) {
               work_list.push_back(use);
             }
@@ -134,7 +137,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
 
       AddNewOperands(inst, &inst_seen, &work_list);
 
-      if (inst->opcode() == SpvOpCopyObject) {
+      if (inst->opcode() == spv::Op::OpCopyObject) {
         context()->ReplaceAllUsesWithPredicate(
             inst->result_id(), inst->GetSingleWordInOperand(0),
             [](Instruction* user) {
@@ -146,7 +149,7 @@ bool SimplificationPass::SimplifyFunction(Function* function) {
             });
         inst_to_kill.insert(inst);
         in_work_list.insert(inst);
-      } else if (inst->opcode() == SpvOpNop) {
+      } else if (inst->opcode() == spv::Op::OpNop) {
         inst_to_kill.insert(inst);
         in_work_list.insert(inst);
       }

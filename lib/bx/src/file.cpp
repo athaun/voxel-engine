@@ -1,9 +1,8 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
-#include "bx_p.h"
 #include <bx/file.h>
 
 #ifndef BX_CONFIG_CRT_FILE_READER_WRITER
@@ -15,7 +14,7 @@
 #endif // BX_CONFIG_CRT_DIRECTORY_READER
 
 #if BX_CRT_NONE
-#	include "crt0.h"
+#	include <bx/crt0.h>
 #else
 #	if BX_CONFIG_CRT_DIRECTORY_READER
 #		include <dirent.h>
@@ -71,12 +70,12 @@ namespace bx
 #	if BX_CRT_MSVC
 #		define fseeko64 _fseeki64
 #		define ftello64 _ftelli64
-#	elif 0                   \
-	  || BX_PLATFORM_ANDROID \
-	  || BX_PLATFORM_BSD     \
-	  || BX_PLATFORM_HAIKU   \
-	  || BX_PLATFORM_IOS     \
-	  || BX_PLATFORM_OSX
+#	elif 0                      \
+	  || BX_PLATFORM_ANDROID    \
+	  || BX_PLATFORM_EMSCRIPTEN \
+	  || BX_PLATFORM_IOS        \
+	  || BX_PLATFORM_OSX        \
+	  || BX_PLATFORM_VISIONOS
 #		define fseeko64 fseeko
 #		define ftello64 ftello
 #	elif BX_PLATFORM_PS4
@@ -280,7 +279,7 @@ namespace bx
 				return false;
 			}
 
-			m_fd = crt0::open(_filePath.get(), crt0::Open::Read, 0);
+			m_fd = crt0::open(_filePath.getCPtr(), crt0::Open::Read, 0);
 
 			if (0 >= m_fd)
 			{
@@ -361,7 +360,7 @@ namespace bx
 				return false;
 			}
 
-			m_fd = crt0::open(_filePath.get(), _append ? crt0::Open::Append : crt0::Open::Write, 0600);
+			m_fd = crt0::open(_filePath.getCPtr(), _append ? crt0::Open::Append : crt0::Open::Write, 0600);
 
 			if (0 >= m_fd)
 			{
@@ -801,7 +800,7 @@ namespace bx
 #if BX_CRT_MSVC
 		int32_t result = ::_mkdir(_filePath.getCPtr() );
 #elif BX_CRT_MINGW
-		int32_t result = ::mkdir(_filePath.getCPtr());
+		int32_t result = ::mkdir(_filePath.getCPtr() );
 #elif BX_CRT_NONE
 		BX_UNUSED(_filePath);
 		int32_t result = -1;
@@ -923,7 +922,7 @@ namespace bx
 		Error err;
 		DirectoryReader dr;
 
-		if (!bx::open(&dr, _filePath) )
+		if (!open(&dr, _filePath, &err) )
 		{
 			BX_ERROR_SET(_err, kErrorNotDirectory, "File already exist, and is not directory.");
 			return false;
@@ -931,7 +930,7 @@ namespace bx
 
 		while (err.isOk() )
 		{
-			bx::read(&dr, fi, &err);
+			read(&dr, fi, &err);
 
 			if (err.isOk() )
 			{
@@ -951,7 +950,7 @@ namespace bx
 			}
 		}
 
-		bx::close(&dr);
+		close(&dr);
 
 		return remove(_filePath, _err);
 	}

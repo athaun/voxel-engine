@@ -1,6 +1,6 @@
 /*
  * Copyright 2018 Attila Kocsis. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh" 
@@ -62,7 +62,7 @@ IMAGE2D_RO(s_normalmapSource, rgba8, 2);
 BUFFER_RO(s_loadCounter, uint, 3); 
 SAMPLER2D(s_importanceMap,  4); 
 IMAGE2D_ARRAY_RO(s_baseSSAO, rg8, 5);
-IMAGE2D_ARRAY_WR(s_target, rg8, 6);
+IMAGE2D_ARRAY_WO(s_target, rg8, 6);
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
 float PackEdges( vec4 edgesLRTB )
@@ -238,11 +238,11 @@ void GenerateSSAOShadowsInternal( out float outShadowTerm, out vec4 outEdges, ou
     float pixZ, pixLZ, pixTZ, pixRZ, pixBZ;
 
 #if BGFX_SHADER_LANGUAGE_GLSL  
-    vec4 valuesUL     = textureGather(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize + vec2(0.0,u_halfViewportPixelSize.y)).wzyx;
-    vec4 valuesBR     = textureGatherOffset(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize + vec2(0.0,u_halfViewportPixelSize.y), ivec2( 1, -1 ) ).wzyx;
+    vec4 valuesUL     = textureGather(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize + vec2(0.0,u_halfViewportPixelSize.y), 0).wzyx;
+    vec4 valuesBR     = textureGatherOffset(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize + vec2(0.0,u_halfViewportPixelSize.y), ivec2( 1, -1 ), 0).wzyx;
 #else
-    vec4 valuesUL     = textureGather(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize );
-    vec4 valuesBR     = textureGatherOffset(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize, ivec2( 1, 1 ) );
+    vec4 valuesUL     = textureGather(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize, 0);
+    vec4 valuesBR     = textureGatherOffset(s_viewspaceDepthSourceMirror, SVPosRounded * u_halfViewportPixelSize, ivec2( 1, 1 ), 0);
 #endif
 
     // get this pixel's viewspace depth

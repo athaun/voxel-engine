@@ -29,6 +29,8 @@
 #include "debuginfo.insts.inc"
 #include "glsl.std.450.insts.inc"
 #include "nonsemantic.clspvreflection.insts.inc"
+#include "nonsemantic.shader.debuginfo.100.insts.inc"
+#include "nonsemantic.vkspreflection.insts.inc"
 #include "opencl.debuginfo.100.insts.inc"
 #include "opencl.std.insts.inc"
 
@@ -55,9 +57,15 @@ static const spv_ext_inst_group_t kGroups_1_0[] = {
      debuginfo_entries},
     {SPV_EXT_INST_TYPE_OPENCL_DEBUGINFO_100,
      ARRAY_SIZE(opencl_debuginfo_100_entries), opencl_debuginfo_100_entries},
+    {SPV_EXT_INST_TYPE_NONSEMANTIC_SHADER_DEBUGINFO_100,
+     ARRAY_SIZE(nonsemantic_shader_debuginfo_100_entries),
+     nonsemantic_shader_debuginfo_100_entries},
     {SPV_EXT_INST_TYPE_NONSEMANTIC_CLSPVREFLECTION,
      ARRAY_SIZE(nonsemantic_clspvreflection_entries),
      nonsemantic_clspvreflection_entries},
+    {SPV_EXT_INST_TYPE_NONSEMANTIC_VKSPREFLECTION,
+     ARRAY_SIZE(nonsemantic_vkspreflection_entries),
+     nonsemantic_vkspreflection_entries},
 };
 
 static const spv_ext_inst_table_t kTable_1_0 = {ARRAY_SIZE(kGroups_1_0),
@@ -89,10 +97,11 @@ spv_result_t spvExtInstTableGet(spv_ext_inst_table* pExtInstTable,
     case SPV_ENV_UNIVERSAL_1_3:
     case SPV_ENV_VULKAN_1_1:
     case SPV_ENV_VULKAN_1_1_SPIRV_1_4:
-    case SPV_ENV_WEBGPU_0:
     case SPV_ENV_UNIVERSAL_1_4:
     case SPV_ENV_UNIVERSAL_1_5:
     case SPV_ENV_VULKAN_1_2:
+    case SPV_ENV_UNIVERSAL_1_6:
+    case SPV_ENV_VULKAN_1_3:
       *pExtInstTable = &kTable_1_0;
       return SPV_SUCCESS;
     default:
@@ -127,8 +136,14 @@ spv_ext_inst_type_t spvExtInstImportTypeGet(const char* name) {
   if (!strcmp("OpenCL.DebugInfo.100", name)) {
     return SPV_EXT_INST_TYPE_OPENCL_DEBUGINFO_100;
   }
+  if (!strcmp("NonSemantic.Shader.DebugInfo.100", name)) {
+    return SPV_EXT_INST_TYPE_NONSEMANTIC_SHADER_DEBUGINFO_100;
+  }
   if (!strncmp("NonSemantic.ClspvReflection.", name, 28)) {
     return SPV_EXT_INST_TYPE_NONSEMANTIC_CLSPVREFLECTION;
+  }
+  if (!strncmp("NonSemantic.VkspReflection.", name, 27)) {
+    return SPV_EXT_INST_TYPE_NONSEMANTIC_VKSPREFLECTION;
   }
   // ensure to add any known non-semantic extended instruction sets
   // above this point, and update spvExtInstIsNonSemantic()
@@ -140,7 +155,9 @@ spv_ext_inst_type_t spvExtInstImportTypeGet(const char* name) {
 
 bool spvExtInstIsNonSemantic(const spv_ext_inst_type_t type) {
   if (type == SPV_EXT_INST_TYPE_NONSEMANTIC_UNKNOWN ||
-      type == SPV_EXT_INST_TYPE_NONSEMANTIC_CLSPVREFLECTION) {
+      type == SPV_EXT_INST_TYPE_NONSEMANTIC_SHADER_DEBUGINFO_100 ||
+      type == SPV_EXT_INST_TYPE_NONSEMANTIC_CLSPVREFLECTION ||
+      type == SPV_EXT_INST_TYPE_NONSEMANTIC_VKSPREFLECTION) {
     return true;
   }
   return false;
@@ -148,6 +165,7 @@ bool spvExtInstIsNonSemantic(const spv_ext_inst_type_t type) {
 
 bool spvExtInstIsDebugInfo(const spv_ext_inst_type_t type) {
   if (type == SPV_EXT_INST_TYPE_OPENCL_DEBUGINFO_100 ||
+      type == SPV_EXT_INST_TYPE_NONSEMANTIC_SHADER_DEBUGINFO_100 ||
       type == SPV_EXT_INST_TYPE_DEBUGINFO) {
     return true;
   }

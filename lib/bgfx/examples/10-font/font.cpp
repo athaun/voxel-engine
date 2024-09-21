@@ -1,6 +1,6 @@
 /*
  * Copyright 2013 Jeremie Roy. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "common.h"
@@ -32,7 +32,7 @@ TrueTypeHandle loadTtf(FontManager* _fm, const char* _filePath)
 	if (NULL != data)
 	{
 		TrueTypeHandle handle = _fm->createTtf( (uint8_t*)data, size);
-		BX_FREE(entry::getAllocator(), data);
+		bx::free(entry::getAllocator(), data);
 		return handle;
 	}
 
@@ -71,6 +71,9 @@ public:
 		bgfx::Init init;
 		init.type     = args.m_type;
 		init.vendorId = args.m_pciId;
+		init.platformData.nwh  = entry::getNativeWindowHandle(entry::kDefaultWindowHandle);
+		init.platformData.ndt  = entry::getNativeDisplayHandle();
+		init.platformData.type = entry::getNativeWindowHandleType();
 		init.resolution.width  = m_width;
 		init.resolution.height = m_height;
 		init.resolution.reset  = m_reset;
@@ -266,18 +269,16 @@ public:
 			float view[16];
 			bx::mtxLookAt(view, eye, at);
 
-			const float centering = 0.5f;
-
 			// Setup a top-left ortho matrix for screen space drawing.
 			const bgfx::Caps* caps = bgfx::getCaps();
 			{
 				float ortho[16];
 				bx::mtxOrtho(
 					  ortho
-					, centering
-					, m_width  + centering
-					, m_height + centering
-					, centering
+					, 0.0f
+					, float(m_width)
+					, float(m_height)
+					, 0.0f
 					, 0.0f
 					, 100.0f
 					, 0.0f

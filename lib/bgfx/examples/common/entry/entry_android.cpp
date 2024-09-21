@@ -1,13 +1,11 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "entry_p.h"
 
 #if ENTRY_CONFIG_USE_NATIVE && BX_PLATFORM_ANDROID
-
-#include <bgfx/platform.h>
 
 #include <bx/thread.h>
 #include <bx/file.h>
@@ -29,18 +27,6 @@ extern "C"
 
 namespace entry
 {
-	///
-	inline void androidSetWindow(::ANativeWindow* _window)
-	{
-		bgfx::PlatformData pd;
-		pd.ndt          = NULL;
-		pd.nwh          = _window;
-		pd.context      = NULL;
-		pd.backBuffer   = NULL;
-		pd.backBufferDS = NULL;
-		bgfx::setPlatformData(pd);
-	}
-
 	struct GamepadRemap
 	{
 		uint16_t  m_keyCode;
@@ -154,7 +140,7 @@ namespace entry
 			{
 				if (0 == AAsset_getRemainingLength(m_file) )
 				{
-					BX_ERROR_SET(_err, bx::kErrorRederWriterEof, "FileReader: EOF.");
+					BX_ERROR_SET(_err, bx::kErrorReaderWriterEof, "FileReader: EOF.");
 				}
 
 				return size >= 0 ? size : 0;
@@ -203,9 +189,10 @@ namespace entry
 
 			while (0 == m_app->destroyRequested)
 			{
-				int32_t num;
 				android_poll_source* source;
-				/*int32_t id =*/ ALooper_pollAll(-1, NULL, &num, (void**)&source);
+				int32_t result = ALooper_pollOnce(-1, NULL, NULL, reinterpret_cast<void**>(&source));
+
+				BX_ASSERT(ALOOPER_POLL_ERROR != result, "ALooper_pollOnce returned an error.");
 
 				if (NULL != source)
 				{
@@ -233,7 +220,6 @@ namespace entry
 					if (m_window != m_app->window)
 					{
 						m_window = m_app->window;
-						androidSetWindow(m_window);
 
 						int32_t width  = ANativeWindow_getWidth(m_window);
 						int32_t height = ANativeWindow_getHeight(m_window);
@@ -550,16 +536,38 @@ namespace entry
 		BX_UNUSED(_handle, _lock);
 	}
 
+	void* getNativeWindowHandle(WindowHandle _handle)
+	{
+		if (kDefaultWindowHandle.idx == _handle.idx)
+		{
+			return s_ctx.m_window;
+		}
+
+		return NULL;
+	}
+
+	void* getNativeDisplayHandle()
+	{
+		return NULL;
+	}
+
+	bgfx::NativeWindowHandleType::Enum getNativeWindowHandleType()
+	{
+		return bgfx::NativeWindowHandleType::Default;
+	}
+
 	int32_t MainThreadEntry::threadFunc(bx::Thread* _thread, void* _userData)
 	{
 		BX_UNUSED(_thread);
 
 		int32_t result = chdir("/sdcard/bgfx/examples/runtime");
-		BX_ASSERT(0 == result, "Failed to chdir to dir. android.permission.WRITE_EXTERNAL_STORAGE?", errno);
+		BX_ASSERT(0 == result
+			, "Failed to chdir to directory (errno: %d, android.permission.WRITE_EXTERNAL_STORAGE?)."
+			, errno
+			);
 
 		MainThreadEntry* self = (MainThreadEntry*)_userData;
 		result = main(self->m_argc, self->m_argv);
-//		PostMessage(s_ctx.m_hwnd, WM_QUIT, 0, 0);
 		return result;
 	}
 

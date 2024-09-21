@@ -1,6 +1,6 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #ifndef BX_MATH_H_HEADER_GUARD
@@ -11,27 +11,11 @@
 
 namespace bx
 {
-	constexpr float kPi         = 3.1415926535897932384626433832795f;
-	constexpr float kPi2        = 6.2831853071795864769252867665590f;
-	constexpr float kInvPi      = 1.0f/kPi;
-	constexpr float kPiHalf     = 1.5707963267948966192313216916398f;
-	constexpr float kPiQuarter  = 0.7853981633974483096156608458199f;
-	constexpr float kSqrt2      = 1.4142135623730950488016887242097f;
-	constexpr float kLogNat10   = 2.3025850929940456840179914546844f;
-	constexpr float kInvLogNat2 = 1.4426950408889634073599246810019f;
-	constexpr float kLogNat2Hi  = 0.6931471805599453094172321214582f;
-	constexpr float kLogNat2Lo  = 1.90821492927058770002e-10f;
-	constexpr float kE          = 2.7182818284590452353602874713527f;
-	constexpr float kNearZero   = 1.0f/float(1 << 28);
-	constexpr float kFloatMin   = 1.175494e-38f;
-	constexpr float kFloatMax   = 3.402823e+38f;
-	extern const float kInfinity;
-
 	///
 	typedef float (*LerpFn)(float _a, float _b, float _t);
 
 	///
-	struct Handness
+	struct Handedness
 	{
 		enum Enum
 		{
@@ -53,8 +37,16 @@ namespace bx
 	///
 	struct Vec3
 	{
+		Vec3() = delete;
+
 		///
-		Vec3();
+		Vec3(InitNoneTag);
+
+		///
+		constexpr Vec3(InitZeroTag);
+
+		///
+		constexpr Vec3(InitIdentityTag);
 
 		///
 		explicit constexpr Vec3(float _v);
@@ -68,6 +60,20 @@ namespace bx
 	///
 	struct Plane
 	{
+		Plane() = delete;
+
+		///
+		Plane(InitNoneTag);
+
+		///
+		constexpr Plane(InitZeroTag);
+
+		///
+		constexpr Plane(InitIdentityTag);
+
+		///
+		constexpr Plane(Vec3 _normal, float _dist);
+
 		Vec3  normal;
 		float dist;
 	};
@@ -75,16 +81,30 @@ namespace bx
 	///
 	struct Quaternion
 	{
+		Quaternion() = delete;
+
+		///
+		Quaternion(InitNoneTag);
+
+		///
+		constexpr Quaternion(InitZeroTag);
+
+		///
+		constexpr Quaternion(InitIdentityTag);
+
+		///
+		constexpr Quaternion(float _x, float _y, float _z, float _w);
+
 		float x, y, z, w;
 	};
 
 	/// Returns converted the argument _deg to radians.
 	///
-	BX_CONST_FUNC float toRad(float _deg);
+	BX_CONSTEXPR_FUNC float toRad(float _deg);
 
 	/// Returns converted the argument _rad to degrees.
 	///
-	BX_CONST_FUNC float toDeg(float _rad);
+	BX_CONSTEXPR_FUNC float toDeg(float _rad);
 
 	/// Reinterprets the bit pattern of _a as uint32_t.
 	///
@@ -150,9 +170,30 @@ namespace bx
 	///
 	BX_CONSTEXPR_FUNC float invLerp(float _a, float _b, float _value);
 
-	/// Returns the sign of _a.
+	/// Extracts the sign of value `_a`.
+	///
+	/// @param[in] _a Value.
+	///
+	/// @returns -1 if `_a` is less than zero, 0 if `_a` is equal to 0, or +1 if `_a` is greater than zero.
 	///
 	BX_CONSTEXPR_FUNC float sign(float _a);
+
+	/// Returns `true` if the velue `_a` is negative.
+	///
+	/// @param[in] _a Value.
+	///
+	/// @returns `true` if `_a` is less than zero, otherwise returns `false`.
+	///
+	BX_CONSTEXPR_FUNC bool signBit(float _a);
+
+	/// Returns value with the magnitude `_value`, and the sign of `_sign`.
+	///
+	/// @param[in] _value Value.
+	/// @param[in] _sign Sign.
+	///
+	/// @returns Value with the magnitude `_value`, and the sign of `_sign`.
+	///
+	BX_CONSTEXPR_FUNC float copySign(float _value, float _sign);
 
 	/// Returns the absolute of _a.
 	///
@@ -162,7 +203,14 @@ namespace bx
 	///
 	BX_CONSTEXPR_FUNC float square(float _a);
 
-	/// Returns the cosine of the argument _a.
+	/// Returns the both sine and cosine of the argument _a.
+	///
+	/// @remarks The function calculates cosine, and then approximates sine based on the cosine
+	///   result. Therefore calculation of sine is less accurate than calling `bx::sin` function.
+	///
+	void sinCosApprox(float& _outSinApprox, float& _outCos, float _a);
+
+	/// Returns the sine of the argument _a.
 	///
 	BX_CONST_FUNC float sin(float _a);
 
@@ -198,7 +246,7 @@ namespace bx
 	///
 	BX_CONST_FUNC float atan(float _a);
 
-	/// Retruns the inverse tangent of _y/_x.
+	/// Returns the inverse tangent of _y/_x.
 	///
 	BX_CONST_FUNC float atan2(float _y, float _x);
 
@@ -229,8 +277,42 @@ namespace bx
 
 	/// Returns the base 2 logarithm of _a.
 	///
+	BX_CONST_FUNC float log2(float _a);
+
+	/// Count number of bits set.
+	///
 	template<typename Ty>
-	BX_CONST_FUNC Ty log2(Ty _a);
+	BX_CONSTEXPR_FUNC uint8_t countBits(Ty _val);
+
+	/// Count number of leading zeros.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC uint8_t countLeadingZeros(Ty _val);
+
+	/// Count number of trailing zeros.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC uint8_t countTrailingZeros(Ty _val);
+
+	/// Find first set.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC uint8_t findFirstSet(Ty _val);
+
+	/// Returns the next smallest integer base 2 logarithm of _a.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC uint8_t ceilLog2(Ty _a);
+
+	/// Returns the next biggest integer base 2 logarithm of _a.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC uint8_t floorLog2(Ty _a);
+
+	/// Returns the next smallest power of two value.
+	///
+	template<typename Ty>
+	BX_CONSTEXPR_FUNC Ty nextPow2(Ty _a);
 
 	/// Returns the square root of _a.
 	///
@@ -249,29 +331,42 @@ namespace bx
 	///
 	BX_CONSTEXPR_FUNC float fract(float _a);
 
-	/// Returns result of negated multiply-sub operation -(_a * _b - _c).
+	/// Returns result of negated multiply-sub operation -(_a * _b - _c) -> _c - _a * _b.
 	///
 	BX_CONSTEXPR_FUNC float nms(float _a, float _b, float _c);
 
-	/// Returns result of multipla and add (_a * _b + _c).
+	/// Returns result of addition (_a + _b).
+	///
+	BX_CONSTEXPR_FUNC float add(float _a, float _b);
+
+	/// Returns result of subtracion (_a - _b).
+	///
+	BX_CONSTEXPR_FUNC float sub(float _a, float _b);
+
+	/// Returns result of multiply (_a * _b).
+	///
+	BX_CONSTEXPR_FUNC float mul(float _a, float _b);
+
+	/// Returns result of multiply and add (_a * _b + _c).
 	///
 	BX_CONSTEXPR_FUNC float mad(float _a, float _b, float _c);
 
 	/// Returns reciprocal of _a.
+	///
 	BX_CONSTEXPR_FUNC float rcp(float _a);
 
 	/// Returns the floating-point remainder of the division operation _a/_b.
 	///
-	BX_CONST_FUNC float mod(float _a, float _b);
+	BX_CONSTEXPR_FUNC float mod(float _a, float _b);
 
 	///
-	BX_CONSTEXPR_FUNC bool equal(float _a, float _b, float _epsilon);
+	BX_CONSTEXPR_FUNC bool isEqual(float _a, float _b, float _epsilon);
 
 	///
-	BX_CONST_FUNC bool equal(const float* _a, const float* _b, uint32_t _num, float _epsilon);
+	BX_CONST_FUNC bool isEqual(const float* _a, const float* _b, uint32_t _num, float _epsilon);
 
 	///
-	BX_CONST_FUNC float wrap(float _a, float _wrap);
+	BX_CONSTEXPR_FUNC float wrap(float _a, float _wrap);
 
 	///
 	BX_CONSTEXPR_FUNC float step(float _edge, float _a);
@@ -283,17 +378,20 @@ namespace bx
 	BX_CONSTEXPR_FUNC float smoothStep(float _a);
 
 	///
+	BX_CONST_FUNC float invSmoothStep(float _a);
+
+	///
 	BX_CONSTEXPR_FUNC float bias(float _time, float _bias);
 
 	///
 	BX_CONSTEXPR_FUNC float gain(float _time, float _gain);
 
 	///
-	BX_CONST_FUNC float angleDiff(float _a, float _b);
+	BX_CONSTEXPR_FUNC float angleDiff(float _a, float _b);
 
 	/// Returns shortest distance linear interpolation between two angles.
 	///
-	BX_CONST_FUNC float angleLerp(float _a, float _b, float _t);
+	BX_CONSTEXPR_FUNC float angleLerp(float _a, float _b, float _t);
 
 	///
 	template<typename Ty>
@@ -336,6 +434,14 @@ namespace bx
 	///
 	BX_CONSTEXPR_FUNC Vec3 div(const Vec3 _a, float _b);
 
+	/// Returns result of negated multiply-sub operation -(_a * _b - _c) -> _c - _a * _b.
+	///
+	BX_CONSTEXPR_FUNC Vec3 nms(const Vec3 _a, const float _b, const Vec3 _c);
+
+	/// Returns result of negated multiply-sub operation -(_a * _b - _c) -> _c - _a * _b.
+	///
+	BX_CONSTEXPR_FUNC Vec3 nms(const Vec3 _a, const Vec3 _b, const Vec3 _c);
+
 	///
 	BX_CONSTEXPR_FUNC Vec3 mad(const Vec3 _a, const float _b, const Vec3 _c);
 
@@ -373,7 +479,11 @@ namespace bx
 	BX_CONSTEXPR_FUNC Vec3 max(const Vec3 _a, const Vec3 _b);
 
 	/// Returns component wise reciprocal of _a.
+	///
 	BX_CONSTEXPR_FUNC Vec3 rcp(const Vec3 _a);
+
+	///
+	BX_CONSTEXPR_FUNC bool isEqual(const Vec3 _a, const Vec3 _b, float _epsilon);
 
 	///
 	void calcTangentFrame(Vec3& _outT, Vec3& _outB, const Vec3 _n);
@@ -394,6 +504,15 @@ namespace bx
 	BX_CONSTEXPR_FUNC Vec3 mulXyz(const Quaternion _a, const Quaternion _b);
 
 	///
+	BX_CONSTEXPR_FUNC Quaternion add(const Quaternion _a, const Quaternion _b);
+
+	///
+	BX_CONSTEXPR_FUNC Quaternion sub(const Quaternion _a, const Quaternion _b);
+
+	///
+	BX_CONSTEXPR_FUNC Quaternion mul(const Quaternion _a, float _b);
+
+	///
 	BX_CONSTEXPR_FUNC Quaternion mul(const Quaternion _a, const Quaternion _b);
 
 	///
@@ -406,10 +525,28 @@ namespace bx
 	BX_CONSTEXPR_FUNC Quaternion normalize(const Quaternion _a);
 
 	///
+	BX_CONSTEXPR_FUNC Quaternion lerp(const Quaternion _a, const Quaternion _b, float _t);
+
+	///
+	BX_CONST_FUNC Quaternion fromEuler(const Vec3 _euler);
+
+	///
 	BX_CONST_FUNC Vec3 toEuler(const Quaternion _a);
 
 	///
-	BX_CONST_FUNC Quaternion rotateAxis(const Vec3 _axis, float _angle);
+	BX_CONST_FUNC Vec3 toXAxis(const Quaternion _a);
+
+	///
+	BX_CONST_FUNC Vec3 toYAxis(const Quaternion _a);
+
+	///
+	BX_CONST_FUNC Vec3 toZAxis(const Quaternion _a);
+
+	///
+	BX_CONST_FUNC Quaternion fromAxisAngle(const Vec3 _axis, float _angle);
+
+	///
+	void toAxisAngle(Vec3& _outAxis, float& _outAngle, const Quaternion _a);
 
 	///
 	BX_CONST_FUNC Quaternion rotateX(float _ax);
@@ -419,6 +556,9 @@ namespace bx
 
 	///
 	BX_CONST_FUNC Quaternion rotateZ(float _az);
+
+	///
+	BX_CONSTEXPR_FUNC bool isEqual(const Quaternion _a, const Quaternion _b, float _epsilon);
 
 	///
 	void mtxIdentity(float* _result);
@@ -450,13 +590,10 @@ namespace bx
 		);
 
 	///
-	void mtxQuat(float* _result, const Quaternion& _quat);
+	void mtxFromQuaternion(float* _result, const Quaternion& _rotation);
 
 	///
-	void mtxQuatTranslation(float* _result, const Quaternion& _quat, const Vec3& _translation);
-
-	///
-	void mtxQuatTranslationHMD(float* _result, const Quaternion& _quat, const Vec3& _translation);
+	void mtxFromQuaternion(float* _result, const Quaternion& _rotation, const Vec3& _translation);
 
 	///
 	void mtxLookAt(
@@ -464,7 +601,7 @@ namespace bx
 		, const Vec3& _eye
 		, const Vec3& _at
 		, const Vec3& _up = { 0.0f, 1.0f, 0.0f }
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		);
 
 	///
@@ -477,7 +614,7 @@ namespace bx
 		, float _near
 		, float _far
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		);
 
 	///
@@ -487,7 +624,7 @@ namespace bx
 		, float _near
 		, float _far
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		);
 
 	///
@@ -498,7 +635,7 @@ namespace bx
 		, float _near
 		, float _far
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		);
 
 	///
@@ -507,7 +644,7 @@ namespace bx
 		, const float _fov[4]
 		, float _near
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		, NearFar::Enum _nearFar = NearFar::Default
 		);
 
@@ -520,7 +657,7 @@ namespace bx
 		, float _rt
 		, float _near
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		, NearFar::Enum _nearFar = NearFar::Default
 		);
 
@@ -531,7 +668,7 @@ namespace bx
 		, float _aspect
 		, float _near
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		, NearFar::Enum _nearFar = NearFar::Default
 		);
 
@@ -546,7 +683,7 @@ namespace bx
 		, float _far
 		, float _offset
 		, bool _homogeneousNdc
-		, Handness::Enum _handness = Handness::Left
+		, Handedness::Enum _handedness = Handedness::Left
 		);
 
 	///
@@ -621,7 +758,10 @@ namespace bx
 	void calcPlane(Plane& _outPlane, const Vec3& _normal, const Vec3& _pos);
 
 	///
-	float distance(const Plane& _plane, const Vec3& _pos);
+	BX_CONSTEXPR_FUNC float distance(const Plane& _plane, const Vec3& _pos);
+
+	///
+	BX_CONSTEXPR_FUNC bool isEqual(const Plane& _a, const Plane& _b, float _epsilon);
 
 	///
 	void calcLinearFit2D(float _result[2], const void* _points, uint32_t _stride, uint32_t _numPoints);

@@ -1,16 +1,16 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
-#include "bx_p.h"
 #include <bx/semaphore.h>
 
 #if BX_CONFIG_SUPPORTS_THREADING
 
 #if BX_CRT_NONE
 #elif  BX_PLATFORM_OSX \
-	|| BX_PLATFORM_IOS
+	|| BX_PLATFORM_IOS   \
+	|| BX_PLATFORM_VISIONOS
 #	include <dispatch/dispatch.h>
 #elif BX_PLATFORM_POSIX
 #	include <errno.h>
@@ -20,6 +20,9 @@
 #elif  BX_PLATFORM_WINDOWS \
 	|| BX_PLATFORM_WINRT   \
 	|| BX_PLATFORM_XBOXONE
+#	ifndef WIN32_LEAN_AND_MEAN
+#		define WIN32_LEAN_AND_MEAN
+#	endif // WIN32_LEAN_AND_MEAN
 #	include <windows.h>
 #	include <limits.h>
 #	if BX_PLATFORM_XBOXONE
@@ -34,7 +37,8 @@ namespace bx
 #if BX_CRT_NONE
 
 #elif  BX_PLATFORM_OSX \
-	|| BX_PLATFORM_IOS
+	|| BX_PLATFORM_IOS   \
+	|| BX_PLATFORM_VISIONOS
 		dispatch_semaphore_t m_handle;
 #elif BX_PLATFORM_POSIX
 		pthread_mutex_t m_mutex;
@@ -68,7 +72,8 @@ namespace bx
 		return false;
 	}
 #elif  BX_PLATFORM_OSX \
-	|| BX_PLATFORM_IOS
+	|| BX_PLATFORM_IOS   \
+	|| BX_PLATFORM_VISIONOS
 
 	Semaphore::Semaphore()
 	{

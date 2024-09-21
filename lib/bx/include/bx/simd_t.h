@@ -1,6 +1,6 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #ifndef BX_SIMD_T_H_HEADER_GUARD
@@ -39,6 +39,7 @@
 #elif   BX_COMPILER_CLANG \
 	&& !BX_PLATFORM_EMSCRIPTEN \
 	&& !BX_PLATFORM_IOS \
+	&& !BX_PLATFORM_VISIONOS \
 	&&  BX_CLANG_HAS_EXTENSION(attribute_ext_vector_type)
 #	undef  BX_SIMD_LANGEXT
 #	define BX_SIMD_LANGEXT 1

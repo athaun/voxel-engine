@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Attila Kocsis. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh" 
 #include "uniforms.sh"
 
-IMAGE2D_ARRAY_WR(s_target, rg8, 0);
+IMAGE2D_ARRAY_WO(s_target, rg8, 0);
 SAMPLER2DARRAY(s_blurInput,  1); 
 
 // edge-ignorant blur in x and y directions, 9 pixels touched (for the lowest quality level 0)

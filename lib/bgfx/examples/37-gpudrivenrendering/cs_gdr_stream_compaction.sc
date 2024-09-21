@@ -1,6 +1,6 @@
 /*
  * Copyright 2018 Kostas Anagnostou. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh"
@@ -17,7 +17,7 @@ BUFFER_RW(drawcallInstanceCount, uint, 3);
 //drawcall data that will drive drawIndirect
 BUFFER_RW(drawcallData, uvec4, 4);
 //culled instance data
-BUFFER_WR(instanceDataOut, vec4, 5);
+BUFFER_WO(instanceDataOut, vec4, 5);
 
 uniform vec4 u_cullingConfig;
 

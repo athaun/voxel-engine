@@ -1,6 +1,6 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 //
@@ -72,11 +72,11 @@ static char* cpToUTF8(int cp, char* str)
 
 	switch (n)
 	{
-		case 6: str[5] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x4000000; BX_FALLTHROUGH;
-		case 5: str[4] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x200000;  BX_FALLTHROUGH;
-		case 4: str[3] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x10000;   BX_FALLTHROUGH;
-		case 3: str[2] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x800;     BX_FALLTHROUGH;
-		case 2: str[1] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0xc0;      BX_FALLTHROUGH;
+		case 6: str[5] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x4000000; [[fallthrough]];
+		case 5: str[4] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x200000;  [[fallthrough]];
+		case 4: str[3] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x10000;   [[fallthrough]];
+		case 3: str[2] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0x800;     [[fallthrough]];
+		case 2: str[1] = 0x80 | (cp & 0x3f); cp = cp >> 6; cp |= 0xc0;      [[fallthrough]];
 		case 1: str[0] = char(cp); break;
 	}
 
@@ -848,7 +848,7 @@ void drawBlendish(struct NVGcontext* _vg, float _x, float _y, float _w, float _h
 
 	y += 25.0f;
 	bndLabel(_vg, x, y, 120.0f, BND_WIDGET_HEIGHT, -1, "Label:");
-	y += BND_WIDGET_HEIGHT;
+	y += float(BND_WIDGET_HEIGHT);
 	bndChoiceButton(_vg, x, y, 80.0f, BND_WIDGET_HEIGHT, BND_CORNER_NONE, BND_DEFAULT, -1, "Default");
 	y += 25.0f;
 	bndChoiceButton(_vg, x, y, 80.0f, BND_WIDGET_HEIGHT, BND_CORNER_NONE, BND_HOVER, -1, "Hovered");
@@ -869,9 +869,9 @@ void drawBlendish(struct NVGcontext* _vg, float _x, float _y, float _w, float _h
 
 	y += 40.0f;
 	bndNumberField(_vg, x, y, 120.0f, BND_WIDGET_HEIGHT, BND_CORNER_DOWN, BND_DEFAULT, "Top", "100");
-	y += BND_WIDGET_HEIGHT - 2.0f;
+	y += float(BND_WIDGET_HEIGHT) - 2.0f;
 	bndNumberField(_vg, x, y, 120.0f, BND_WIDGET_HEIGHT, BND_CORNER_ALL, BND_DEFAULT, "Center", "100");
-	y += BND_WIDGET_HEIGHT - 2.0f;
+	y += float(BND_WIDGET_HEIGHT) - 2.0f;
 	bndNumberField(_vg, x, y, 120.0f, BND_WIDGET_HEIGHT, BND_CORNER_TOP, BND_DEFAULT, "Bottom", "100");
 
 	float mx = x - 30.0f;
@@ -879,11 +879,11 @@ void drawBlendish(struct NVGcontext* _vg, float _x, float _y, float _w, float _h
 	float mw = 120.0f;
 	bndMenuBackground(_vg, mx, my, mw, 120.0f, BND_CORNER_TOP);
 	bndMenuLabel(_vg, mx, my, mw, BND_WIDGET_HEIGHT, -1, "Menu Title");
-	my += BND_WIDGET_HEIGHT - 2.0f;
+	my += float(BND_WIDGET_HEIGHT) - 2.0f;
 	bndMenuItem(_vg, mx, my, mw, BND_WIDGET_HEIGHT, BND_DEFAULT, BND_ICONID(17, 3), "Default");
-	my += BND_WIDGET_HEIGHT - 2.0f;
+	my += float(BND_WIDGET_HEIGHT) - 2.0f;
 	bndMenuItem(_vg, mx, my, mw, BND_WIDGET_HEIGHT, BND_HOVER, BND_ICONID(18, 3), "Hovered");
-	my += BND_WIDGET_HEIGHT - 2.0f;
+	my += float(BND_WIDGET_HEIGHT) - 2.0f;
 	bndMenuItem(_vg, mx, my, mw, BND_WIDGET_HEIGHT, BND_ACTIVE, BND_ICONID(19, 3), "Active");
 
 	y = _y;
@@ -1402,6 +1402,9 @@ public:
 		bgfx::Init init;
 		init.type     = args.m_type;
 		init.vendorId = args.m_pciId;
+		init.platformData.nwh  = entry::getNativeWindowHandle(entry::kDefaultWindowHandle);
+		init.platformData.ndt  = entry::getNativeDisplayHandle();
+		init.platformData.type = entry::getNativeWindowHandleType();
 		init.resolution.width  = m_width;
 		init.resolution.height = m_height;
 		init.resolution.reset  = m_reset;
