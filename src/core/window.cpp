@@ -98,15 +98,8 @@ namespace Window {
     bool should_close() {
         return glfwWindowShouldClose(window);
     }
-    void get_mouse_position(float& x, float& y) {
-        double mouseX, mouseY;
-        glfwGetCursorPos(window, &mouseX, &mouseY);
-
-        x = static_cast<float>(mouseX);
-        y = static_cast<float>(mouseY);
-    }
-
-    bool is_key_pressed(int key) {
-        return glfwGetKey(window, key) == GLFW_PRESS;
+    
+    GLFWwindow* get_window() {
+        return window;  // Return the static window instance
     }
 }
