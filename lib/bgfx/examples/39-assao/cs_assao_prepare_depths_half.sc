@@ -1,14 +1,14 @@
 /*
  * Copyright 2018 Attila Kocsis. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh" 
 #include "uniforms.sh"
 
 SAMPLER2D(s_depthSource, 0);
-IMAGE2D_WR(s_target0, r16f, 1);
-IMAGE2D_WR(s_target1, r16f, 2);
+IMAGE2D_WO(s_target0, r16f, 1);
+IMAGE2D_WO(s_target1, r16f, 2);
 
 float ScreenSpaceToViewSpaceDepth( float screenDepth )
 {

@@ -1,6 +1,6 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #include "test.h"
@@ -43,7 +43,7 @@ static const UrlTest s_urlTest[] =
 	},
 };
 
-TEST_CASE("tokenizeUrl", "")
+TEST_CASE("tokenizeUrl", "[url][string]")
 {
 	bx::UrlView url;
 

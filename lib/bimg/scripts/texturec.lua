@@ -1,13 +1,12 @@
 --
--- Copyright 2010-2020 Branimir Karadzic. All rights reserved.
--- License: https://github.com/bkaradzic/bimg#license-bsd-2-clause
+-- Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+-- License: https://github.com/bkaradzic/bimg/blob/master/LICENSE
 --
 
 project "texturec"
 	kind "ConsoleApp"
 
 	includedirs {
-		path.join(BX_DIR,   "include"),
 		path.join(BIMG_DIR, "include"),
 	}
 
@@ -20,13 +19,22 @@ project "texturec"
 		"bimg_decode",
 		"bimg_encode",
 		"bimg",
-		"bx",
 	}
+
+	if _OPTIONS["with-libheif"] then
+		links {
+			"heif",
+		}
+
+		configuration {}
+	end
+
+	using_bx()
 
 	configuration { "mingw-*" }
 		targetextension ".exe"
 
-	configuration { "osx" }
+	configuration { "osx*" }
 		links {
 			"Cocoa.framework",
 		}

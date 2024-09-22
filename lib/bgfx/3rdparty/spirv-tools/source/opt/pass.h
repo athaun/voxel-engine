@@ -28,6 +28,13 @@
 #include "spirv-tools/libspirv.hpp"
 #include "types.h"
 
+// Avoid unused variable warning/error on Linux
+#ifndef NDEBUG
+#define USE_ASSERT(x) assert(x)
+#else
+#define USE_ASSERT(x) ((void)(x))
+#endif
+
 namespace spvtools {
 namespace opt {
 
@@ -129,7 +136,7 @@ class Pass {
 
   // Processes the given |module|. Returns Status::Failure if errors occur when
   // processing. Returns the corresponding Status::Success if processing is
-  // succesful to indicate whether changes are made to the module.
+  // successful to indicate whether changes are made to the module.
   virtual Status Process() = 0;
 
   // Return the next available SSA id and increment it.
@@ -138,7 +145,8 @@ class Pass {
 
   // Returns the id whose value is the same as |object_to_copy| except its type
   // is |new_type_id|.  Any instructions needed to generate this value will be
-  // inserted before |insertion_position|.
+  // inserted before |insertion_position|. Returns 0 if a copy could not be
+  // done.
   uint32_t GenerateCopy(Instruction* object_to_copy, uint32_t new_type_id,
                         Instruction* insertion_position);
 

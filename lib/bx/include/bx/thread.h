@@ -1,6 +1,6 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #ifndef BX_THREAD_H_HEADER_GUARD
@@ -21,7 +21,6 @@ namespace bx
 	{
 		BX_CLASS(Thread
 			, NO_COPY
-			, NO_ASSIGNMENT
 			);
 
 	public:
@@ -73,6 +72,7 @@ namespace bx
 		uint32_t  m_stackSize;
 		int32_t   m_exitCode;
 		bool      m_running;
+		char      m_name[64];
 	};
 
 	///

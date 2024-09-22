@@ -1,6 +1,6 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_p.h"
@@ -18,13 +18,17 @@ namespace bgfx { namespace noop
 				| BGFX_CAPS_COMPUTE
 				| BGFX_CAPS_CONSERVATIVE_RASTER
 				| BGFX_CAPS_DRAW_INDIRECT
+				| BGFX_CAPS_DRAW_INDIRECT_COUNT
 				| BGFX_CAPS_FRAGMENT_DEPTH
 				| BGFX_CAPS_FRAGMENT_ORDERING
 				| BGFX_CAPS_GRAPHICS_DEBUGGER
+				| BGFX_CAPS_HDR10
 				| BGFX_CAPS_HIDPI
+				| BGFX_CAPS_IMAGE_RW
 				| BGFX_CAPS_INDEX32
 				| BGFX_CAPS_INSTANCING
 				| BGFX_CAPS_OCCLUSION_QUERY
+				| BGFX_CAPS_PRIMITIVE_ID
 				| BGFX_CAPS_RENDERER_MULTITHREADED
 				| BGFX_CAPS_SWAP_CHAIN
 				| BGFX_CAPS_TEXTURE_2D_ARRAY
@@ -34,8 +38,11 @@ namespace bgfx { namespace noop
 				| BGFX_CAPS_TEXTURE_COMPARE_LEQUAL
 				| BGFX_CAPS_TEXTURE_CUBE_ARRAY
 				| BGFX_CAPS_TEXTURE_READ_BACK
+				| BGFX_CAPS_TRANSPARENT_BACKBUFFER
 				| BGFX_CAPS_VERTEX_ATTRIB_HALF
 				| BGFX_CAPS_VERTEX_ATTRIB_UINT10
+				| BGFX_CAPS_VERTEX_ID
+				| BGFX_CAPS_VIEWPORT_LAYER_ARRAY
 				;
 
 			// Pretend all features are available for all texture formats.
@@ -252,6 +259,7 @@ namespace bgfx { namespace noop
 			perfStats.gpuTimeBegin  = 0;
 			perfStats.gpuTimeEnd    = 0;
 			perfStats.gpuTimerFreq  = 1000000000;
+			perfStats.gpuFrameNum   = 0;
 
 			bx::memSet(perfStats.numPrims, 0, sizeof(perfStats.numPrims) );
 
@@ -279,7 +287,7 @@ namespace bgfx { namespace noop
 
 	void rendererDestroy()
 	{
-		BX_DELETE(g_allocator, s_renderNOOP);
+		bx::deleteObject(g_allocator, s_renderNOOP);
 		s_renderNOOP = NULL;
 	}
 } /* namespace noop */ } // namespace bgfx

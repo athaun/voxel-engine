@@ -1,6 +1,6 @@
 /*
 * Copyright 2018 Attila Kocsis. All rights reserved.
-* License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+* License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
 */
 
 /*
@@ -84,7 +84,7 @@ namespace
 	bgfx::VertexLayout PosTexCoord0Vertex::ms_layout;
 
 	// Utility function to draw a screen space quad for deferred rendering
-	void screenSpaceQuad(float _textureWidth, float _textureHeight, float _texelHalf, bool _originBottomLeft, float _width = 1.0f, float _height = 1.0f)
+	void screenSpaceQuad(bool _originBottomLeft, float _width = 1.0f, float _height = 1.0f)
 	{
 		if (3 == bgfx::getAvailTransientVertexBuffer(3, PosTexCoord0Vertex::ms_layout))
 		{
@@ -97,15 +97,13 @@ namespace
 			const float miny = 0.0f;
 			const float maxy = _height * 2.0f;
 
-			const float texelHalfW = _texelHalf / _textureWidth;
-			const float texelHalfH = _texelHalf / _textureHeight;
-			const float minu = -1.0f + texelHalfW;
-			const float maxu = 1.0f + texelHalfH;
+			const float minu = -1.0f;
+			const float maxu =  1.0f;
 
 			const float zz = 0.0f;
 
-			float minv = texelHalfH;
-			float maxv = 2.0f + texelHalfH;
+			float minv = 0.0f;
+			float maxv = 2.0f;
 
 			if (_originBottomLeft)
 			{
@@ -252,7 +250,6 @@ namespace
 			, m_currFrame(UINT32_MAX)
 			, m_enableSSAO(true)
 			, m_enableTexturing(true)
-			, m_texelHalf(0.0f)
 			, m_framebufferGutter(true)
 		{
 		}
@@ -267,12 +264,14 @@ namespace
 			m_reset = BGFX_RESET_VSYNC;
 
 			bgfx::Init init;
-			init.type = args.m_type;
-
+			init.type     = args.m_type;
 			init.vendorId = args.m_pciId;
-			init.resolution.width = m_width;
+			init.platformData.nwh  = entry::getNativeWindowHandle(entry::kDefaultWindowHandle);
+			init.platformData.ndt  = entry::getNativeDisplayHandle();
+		init.platformData.type = entry::getNativeWindowHandleType();
+			init.resolution.width  = m_width;
 			init.resolution.height = m_height;
-			init.resolution.reset = m_reset;
+			init.resolution.reset  = m_reset;
 			bgfx::init(init);
 
 			// Enable debug text.
@@ -374,10 +373,6 @@ namespace
 			cameraSetVerticalAngle(-0.3f);
 			m_fovY = 60.0f;
 
-			// Get renderer capabilities info.
-			const bgfx::RendererType::Enum renderer = bgfx::getRendererType();
-			m_texelHalf = bgfx::RendererType::Direct3D9 == renderer ? 0.5f : 0.0f;
-
 			imguiCreate();
 		}
 
@@ -471,7 +466,7 @@ namespace
 				}
 
 				// Update camera
-				cameraUpdate(deltaTime*0.15f, m_mouseState);
+				cameraUpdate(deltaTime*0.15f, m_mouseState, ImGui::MouseOverArea() );
 
 				// Set up matrices for gbuffer
 				cameraGetViewMtx(m_view);
@@ -493,7 +488,7 @@ namespace
 				bgfx::setViewTransform(RENDER_PASS_COMBINE, NULL, orthoProj);
 				bgfx::setViewRect(RENDER_PASS_COMBINE, 0, 0, uint16_t(m_width), uint16_t(m_height));
 				// Bind vertex buffer and draw quad
-				screenSpaceQuad((float)m_width, (float)m_height, m_texelHalf, caps->originBottomLeft);
+				screenSpaceQuad(caps->originBottomLeft);
 				//bgfx::submit(RENDER_PASS_COMBINE, m_combineProgram);
 				bgfx::touch(RENDER_PASS_COMBINE);
 
@@ -752,7 +747,7 @@ namespace
 						(float)(m_size[0]-2*m_border) / (float)m_size[0], (float)(m_size[1] - 2 * m_border) / (float)m_size[1],
 						(float)m_border / (float)m_size[0], (float)m_border / (float)m_size[1] };
 					bgfx::setUniform(u_combineParams, combineParams, 2);
-					screenSpaceQuad((float)m_width, (float)m_height, m_texelHalf, caps->originBottomLeft);
+					screenSpaceQuad(caps->originBottomLeft);
 					bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS);
 					bgfx::submit(view, m_combineProgram);
 					++view;
@@ -929,8 +924,8 @@ namespace
 
 			bgfx::TextureHandle gbufferTex[3];
 			gbufferTex[GBUFFER_RT_NORMAL] = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::BGRA8, tsFlags);
-			gbufferTex[GBUFFER_RT_COLOR] = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::BGRA8, tsFlags);
-			gbufferTex[GBUFFER_RT_DEPTH] = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::D24, tsFlags);
+			gbufferTex[GBUFFER_RT_COLOR]  = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::BGRA8, tsFlags);
+			gbufferTex[GBUFFER_RT_DEPTH]  = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::D32F,  tsFlags);
 			m_gbuffer = bgfx::createFrameBuffer(BX_COUNTOF(gbufferTex), gbufferTex, true);
 
 			for (int32_t i = 0; i < 4; i++)
@@ -939,13 +934,13 @@ namespace
 			}
 
 			m_pingPongHalfResultA = bgfx::createTexture2D(uint16_t(m_halfSize[0]), uint16_t(m_halfSize[1]), false, 2, bgfx::TextureFormat::RG8, BGFX_TEXTURE_COMPUTE_WRITE);
-			m_pingPongHalfResultB = bgfx::createTexture2D(uint16_t(m_halfSize[0]), uint16_t(m_halfSize[1]),  false, 2, bgfx::TextureFormat::RG8, BGFX_TEXTURE_COMPUTE_WRITE);
+			m_pingPongHalfResultB = bgfx::createTexture2D(uint16_t(m_halfSize[0]), uint16_t(m_halfSize[1]), false, 2, bgfx::TextureFormat::RG8, BGFX_TEXTURE_COMPUTE_WRITE);
 
 			m_finalResults = bgfx::createTexture2D(uint16_t(m_halfSize[0]), uint16_t(m_halfSize[1]),  false, 4, bgfx::TextureFormat::RG8, BGFX_TEXTURE_COMPUTE_WRITE | SAMPLER_LINEAR_CLAMP);
 
 			m_normals = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]),  false, 1, bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_COMPUTE_WRITE);
 
-			m_importanceMap = bgfx::createTexture2D(uint16_t(m_quarterSize[0]), uint16_t(m_quarterSize[1]), false, 1, bgfx::TextureFormat::R8, BGFX_TEXTURE_COMPUTE_WRITE | SAMPLER_LINEAR_CLAMP);
+			m_importanceMap     = bgfx::createTexture2D(uint16_t(m_quarterSize[0]), uint16_t(m_quarterSize[1]), false, 1, bgfx::TextureFormat::R8, BGFX_TEXTURE_COMPUTE_WRITE | SAMPLER_LINEAR_CLAMP);
 			m_importanceMapPong = bgfx::createTexture2D(uint16_t(m_quarterSize[0]), uint16_t(m_quarterSize[1]), false, 1, bgfx::TextureFormat::R8, BGFX_TEXTURE_COMPUTE_WRITE | SAMPLER_LINEAR_CLAMP);
 
 			m_aoMap = bgfx::createTexture2D(uint16_t(m_size[0]), uint16_t(m_size[1]), false, 1, bgfx::TextureFormat::R8, BGFX_TEXTURE_COMPUTE_WRITE | SAMPLER_POINT_CLAMP);
@@ -1181,7 +1176,6 @@ namespace
 		bool m_enableSSAO;
 		bool m_enableTexturing;
 
-		float m_texelHalf;
 		float m_fovY;
 
 		bool m_framebufferGutter;

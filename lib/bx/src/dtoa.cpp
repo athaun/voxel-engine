@@ -1,15 +1,12 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
-#include "bx_p.h"
 #include <bx/cpu.h>
 #include <bx/math.h>
 #include <bx/string.h>
 #include <bx/uint32_t.h>
-
-#include <type_traits>
 
 namespace bx
 {
@@ -97,13 +94,13 @@ namespace bx
 
 		DiyFp Normalize() const
 		{
-			uint32_t s = uint64_cntlz(f);
+			uint8_t s = countLeadingZeros(f);
 			return DiyFp(f << s, e - s);
 		}
 
 		DiyFp NormalizeBoundary() const
 		{
-			uint32_t index = uint64_cntlz(f);
+			uint8_t index = countLeadingZeros(f);
 			return DiyFp (f << index, e - index);
 		}
 
@@ -482,12 +479,8 @@ namespace bx
 				return 0;
 			}
 
-			_max = toString(_dst + 1
-				, _max - 1
-				, typename std::make_unsigned<Ty>::type(-_value)
-				, _base
-				, _separator
-				);
+			_max = toString(_dst + 1, _max - 1, asUnsigned(-_value), _base, _separator);
+
 			if (_max == 0)
 			{
 				return 0;
@@ -497,12 +490,7 @@ namespace bx
 			return int32_t(_max + 1);
 		}
 
-		return toString(_dst
-			, _max
-			, typename std::make_unsigned<Ty>::type(_value)
-			, _base
-			, _separator
-			);
+		return toString(_dst, _max, asUnsigned(_value), _base, _separator);
 	}
 
 	int32_t toString(char* _dst, int32_t _max, int32_t _value, uint32_t _base, char _separator)
@@ -1120,7 +1108,7 @@ namespace bx
 
 	bool fromString(int32_t* _out, const StringView& _str)
 	{
-		StringView str = bx::strLTrimSpace(_str);
+		StringView str = strLTrimSpace(_str);
 
 		const char* ptr  = str.getPtr();
 		const char* term = str.getTerm();

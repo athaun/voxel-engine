@@ -14,13 +14,9 @@
 
 #include "source/val/validate.h"
 
-#include <algorithm>
-#include <cassert>
-#include <cstdio>
 #include <functional>
 #include <iterator>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -28,15 +24,11 @@
 #include "source/diagnostic.h"
 #include "source/enum_string_mapping.h"
 #include "source/extensions.h"
-#include "source/instruction.h"
 #include "source/opcode.h"
-#include "source/operand.h"
 #include "source/spirv_constant.h"
 #include "source/spirv_endian.h"
 #include "source/spirv_target_env.h"
-#include "source/spirv_validator_options.h"
 #include "source/val/construct.h"
-#include "source/val/function.h"
 #include "source/val/instruction.h"
 #include "source/val/validation_state.h"
 #include "spirv-tools/libspirv.h"
@@ -66,15 +58,15 @@ void RegisterExtension(ValidationState_t& _,
 
 // Parses the beginning of the module searching for OpExtension instructions.
 // Registers extensions if recognized. Returns SPV_REQUESTED_TERMINATION
-// once an instruction which is not SpvOpCapability and SpvOpExtension is
-// encountered. According to the SPIR-V spec extensions are declared after
-// capabilities and before everything else.
+// once an instruction which is not spv::Op::OpCapability and
+// spv::Op::OpExtension is encountered. According to the SPIR-V spec extensions
+// are declared after capabilities and before everything else.
 spv_result_t ProcessExtensions(void* user_data,
                                const spv_parsed_instruction_t* inst) {
-  const SpvOp opcode = static_cast<SpvOp>(inst->opcode);
-  if (opcode == SpvOpCapability) return SPV_SUCCESS;
+  const spv::Op opcode = static_cast<spv::Op>(inst->opcode);
+  if (opcode == spv::Op::OpCapability) return SPV_SUCCESS;
 
-  if (opcode == SpvOpExtension) {
+  if (opcode == spv::Op::OpExtension) {
     ValidationState_t& _ = *(reinterpret_cast<ValidationState_t*>(user_data));
     RegisterExtension(_, inst);
     return SPV_SUCCESS;
@@ -111,57 +103,6 @@ spv_result_t ValidateForwardDecls(ValidationState_t& _) {
          << id_str.substr(0, id_str.size() - 1);
 }
 
-std::vector<std::string> CalculateNamesForEntryPoint(ValidationState_t& _,
-                                                     const uint32_t id) {
-  auto id_descriptions = _.entry_point_descriptions(id);
-  auto id_names = std::vector<std::string>();
-  id_names.reserve((id_descriptions.size()));
-
-  for (auto description : id_descriptions) id_names.push_back(description.name);
-
-  return id_names;
-}
-
-spv_result_t ValidateEntryPointNameUnique(ValidationState_t& _,
-                                          const uint32_t id) {
-  auto id_names = CalculateNamesForEntryPoint(_, id);
-  const auto names =
-      std::unordered_set<std::string>(id_names.begin(), id_names.end());
-
-  if (id_names.size() != names.size()) {
-    std::sort(id_names.begin(), id_names.end());
-    for (size_t i = 0; i < id_names.size() - 1; i++) {
-      if (id_names[i] == id_names[i + 1]) {
-        return _.diag(SPV_ERROR_INVALID_BINARY, _.FindDef(id))
-               << "Entry point name \"" << id_names[i]
-               << "\" is not unique, which is not allow in WebGPU env.";
-      }
-    }
-  }
-
-  for (const auto other_id : _.entry_points()) {
-    if (other_id == id) continue;
-    const auto other_id_names = CalculateNamesForEntryPoint(_, other_id);
-    for (const auto& other_id_name : other_id_names) {
-      if (names.find(other_id_name) != names.end()) {
-        return _.diag(SPV_ERROR_INVALID_BINARY, _.FindDef(id))
-               << "Entry point name \"" << other_id_name
-               << "\" is not unique, which is not allow in WebGPU env.";
-      }
-    }
-  }
-
-  return SPV_SUCCESS;
-}
-
-spv_result_t ValidateEntryPointNamesUnique(ValidationState_t& _) {
-  for (const auto id : _.entry_points()) {
-    auto result = ValidateEntryPointNameUnique(_, id);
-    if (result != SPV_SUCCESS) return result;
-  }
-  return SPV_SUCCESS;
-}
-
 // Entry point validation. Based on 2.16.1 (Universal Validation Rules) of the
 // SPIRV spec:
 // * There is at least one OpEntryPoint instruction, unless the Linkage
@@ -169,13 +110,12 @@ spv_result_t ValidateEntryPointNamesUnique(ValidationState_t& _) {
 // * No function can be targeted by both an OpEntryPoint instruction and an
 //   OpFunctionCall instruction.
 //
-// Additionally enforces that entry points for Vulkan and WebGPU should not have
-// recursion. And that entry names should be unique for WebGPU.
+// Additionally enforces that entry points for Vulkan should not have recursion.
 spv_result_t ValidateEntryPoints(ValidationState_t& _) {
   _.ComputeFunctionToEntryPointMapping();
   _.ComputeRecursiveEntryPoints();
 
-  if (_.entry_points().empty() && !_.HasCapability(SpvCapabilityLinkage)) {
+  if (_.entry_points().empty() && !_.HasCapability(spv::Capability::Linkage)) {
     return _.diag(SPV_ERROR_INVALID_BINARY, nullptr)
            << "No OpEntryPoint instruction was found. This is only allowed if "
               "the Linkage capability is being used.";
@@ -189,21 +129,23 @@ spv_result_t ValidateEntryPoints(ValidationState_t& _) {
                 "an OpFunctionCall instruction.";
     }
 
-    // For Vulkan and WebGPU, the static function-call graph for an entry point
+    // For Vulkan, the static function-call graph for an entry point
     // must not contain cycles.
-    if (spvIsVulkanOrWebGPUEnv(_.context()->target_env)) {
+    if (spvIsVulkanEnv(_.context()->target_env)) {
       if (_.recursive_entry_points().find(entry_point) !=
           _.recursive_entry_points().end()) {
         return _.diag(SPV_ERROR_INVALID_BINARY, _.FindDef(entry_point))
+               << _.VkErrorID(4634)
                << "Entry points may not have a call graph with cycles.";
       }
     }
+  }
 
-    // For WebGPU all entry point names must be unique.
-    if (spvIsWebGPUEnv(_.context()->target_env)) {
-      const auto result = ValidateEntryPointNamesUnique(_);
-      if (result != SPV_SUCCESS) return result;
-    }
+  if (auto error = ValidateFloatControls2(_)) {
+    return error;
+  }
+  if (auto error = ValidateDuplicateExecutionModes(_)) {
+    return error;
   }
 
   return SPV_SUCCESS;
@@ -221,12 +163,6 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
     return DiagnosticStream(position, context.consumer, "",
                             SPV_ERROR_INVALID_BINARY)
            << "Invalid SPIR-V magic number.";
-  }
-
-  if (spvIsWebGPUEnv(context.target_env) && endian != SPV_ENDIANNESS_LITTLE) {
-    return DiagnosticStream(position, context.consumer, "",
-                            SPV_ERROR_INVALID_BINARY)
-           << "WebGPU requires SPIR-V to be little endian.";
   }
 
   spv_header_t header;
@@ -265,13 +201,15 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
                  /* diagnostic = */ nullptr);
 
   // Parse the module and perform inline validation checks. These checks do
-  // not require the the knowledge of the whole module.
+  // not require the knowledge of the whole module.
   if (auto error = spvBinaryParse(&context, vstate, words, num_words,
                                   /*parsed_header =*/nullptr,
                                   ProcessInstruction, pDiagnostic)) {
     return error;
   }
 
+  bool has_mask_task_nv = false;
+  bool has_mask_task_ext = false;
   std::vector<Instruction*> visited_entry_points;
   for (auto& instruction : vstate->ordered_instructions()) {
     {
@@ -279,12 +217,10 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
       // able to, briefly, de-const the instruction.
       Instruction* inst = const_cast<Instruction*>(&instruction);
 
-      if (inst->opcode() == SpvOpEntryPoint) {
+      if (inst->opcode() == spv::Op::OpEntryPoint) {
         const auto entry_point = inst->GetOperandAs<uint32_t>(1);
-        const auto execution_model = inst->GetOperandAs<SpvExecutionModel>(0);
-        const char* str = reinterpret_cast<const char*>(
-            inst->words().data() + inst->operand(2).offset);
-        const std::string desc_name(str);
+        const auto execution_model = inst->GetOperandAs<spv::ExecutionModel>(0);
+        const std::string desc_name = inst->GetOperandAs<std::string>(2);
 
         ValidationState_t::EntryPointDescription desc;
         desc.name = desc_name;
@@ -299,10 +235,9 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
         if (visited_entry_points.size() > 0) {
           for (const Instruction* check_inst : visited_entry_points) {
             const auto check_execution_model =
-                check_inst->GetOperandAs<SpvExecutionModel>(0);
-            const char* check_str = reinterpret_cast<const char*>(
-                check_inst->words().data() + inst->operand(2).offset);
-            const std::string check_name(check_str);
+                check_inst->GetOperandAs<spv::ExecutionModel>(0);
+            const std::string check_name =
+                check_inst->GetOperandAs<std::string>(2);
 
             if (desc_name == check_name &&
                 execution_model == check_execution_model) {
@@ -313,21 +248,19 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
           }
         }
         visited_entry_points.push_back(inst);
+
+        has_mask_task_nv |= (execution_model == spv::ExecutionModel::TaskNV ||
+                             execution_model == spv::ExecutionModel::MeshNV);
+        has_mask_task_ext |= (execution_model == spv::ExecutionModel::TaskEXT ||
+                              execution_model == spv::ExecutionModel::MeshEXT);
       }
-      if (inst->opcode() == SpvOpFunctionCall) {
+      if (inst->opcode() == spv::Op::OpFunctionCall) {
         if (!vstate->in_function_body()) {
           return vstate->diag(SPV_ERROR_INVALID_LAYOUT, &instruction)
                  << "A FunctionCall must happen within a function body.";
         }
 
         const auto called_id = inst->GetOperandAs<uint32_t>(2);
-        if (spvIsWebGPUEnv(context.target_env) &&
-            !vstate->IsFunctionCallDefined(called_id)) {
-          return vstate->diag(SPV_ERROR_INVALID_LAYOUT, &instruction)
-                 << "For WebGPU, functions need to be defined before being "
-                    "called.";
-        }
-
         vstate->AddFunctionCallTarget(called_id);
       }
 
@@ -352,7 +285,7 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
     {
       Instruction* inst = const_cast<Instruction*>(&instruction);
       vstate->RegisterInstruction(inst);
-      if (inst->opcode() == SpvOpTypeForwardPointer) {
+      if (inst->opcode() == spv::Op::OpTypeForwardPointer) {
         vstate->RegisterForwardPointer(inst->GetOperandAs<uint32_t>(0));
       }
     }
@@ -365,6 +298,17 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
   if (vstate->in_function_body())
     return vstate->diag(SPV_ERROR_INVALID_LAYOUT, nullptr)
            << "Missing OpFunctionEnd at end of module.";
+
+  if (vstate->HasCapability(spv::Capability::BindlessTextureNV) &&
+      !vstate->has_samplerimage_variable_address_mode_specified())
+    return vstate->diag(SPV_ERROR_INVALID_LAYOUT, nullptr)
+           << "Missing required OpSamplerImageAddressingModeNV instruction.";
+
+  if (has_mask_task_ext && has_mask_task_nv)
+    return vstate->diag(SPV_ERROR_INVALID_LAYOUT, nullptr)
+           << vstate->VkErrorID(7102)
+           << "Module can't mix MeshEXT/TaskEXT with MeshNV/TaskNV Execution "
+              "Model.";
 
   // Catch undefined forward references before performing further checks.
   if (auto error = ValidateForwardDecls(*vstate)) return error;
@@ -418,10 +362,15 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
     if (auto error = NonUniformPass(*vstate, &instruction)) return error;
 
     if (auto error = LiteralsPass(*vstate, &instruction)) return error;
+    if (auto error = RayQueryPass(*vstate, &instruction)) return error;
+    if (auto error = RayTracingPass(*vstate, &instruction)) return error;
+    if (auto error = RayReorderNVPass(*vstate, &instruction)) return error;
+    if (auto error = MeshShadingPass(*vstate, &instruction)) return error;
   }
 
-  // Validate the preconditions involving adjacent instructions. e.g. SpvOpPhi
-  // must only be preceeded by SpvOpLabel, SpvOpPhi, or SpvOpLine.
+  // Validate the preconditions involving adjacent instructions. e.g.
+  // spv::Op::OpPhi must only be preceded by spv::Op::OpLabel, spv::Op::OpPhi,
+  // or spv::Op::OpLine.
   if (auto error = ValidateAdjacency(*vstate)) return error;
 
   if (auto error = ValidateEntryPoints(*vstate)) return error;
@@ -439,6 +388,8 @@ spv_result_t ValidateBinaryUsingContextAndValidationState(
   for (const auto& inst : vstate->ordered_instructions()) {
     if (auto error = ValidateExecutionLimitations(*vstate, &inst)) return error;
     if (auto error = ValidateSmallTypeUses(*vstate, &inst)) return error;
+    if (auto error = ValidateQCOMImageProcessingTextureUsages(*vstate, &inst))
+      return error;
   }
 
   return SPV_SUCCESS;

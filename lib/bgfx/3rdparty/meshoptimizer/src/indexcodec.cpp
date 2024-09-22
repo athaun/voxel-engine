@@ -4,14 +4,6 @@
 #include <assert.h>
 #include <string.h>
 
-#ifndef TRACE
-#define TRACE 0
-#endif
-
-#if TRACE
-#include <stdio.h>
-#endif
-
 // This work is based on:
 // Fabian Giesen. Simple lossless index buffer compression & follow-up. 2013
 // Conor Stokes. Vertex Cache Optimised Index Buffer Compression. 2014
@@ -21,7 +13,7 @@ namespace meshopt
 const unsigned char kIndexHeader = 0xe0;
 const unsigned char kSequenceHeader = 0xd0;
 
-static int gEncodeIndexVersion = 0;
+static int gEncodeIndexVersion = 1;
 
 typedef unsigned int VertexFifo[16];
 typedef unsigned int EdgeFifo[16][2];
@@ -41,7 +33,7 @@ static int rotateTriangle(unsigned int a, unsigned int b, unsigned int c, unsign
 {
 	(void)a;
 
-	return (b == next) ? 1 : (c == next) ? 2 : 0;
+	return (b == next) ? 1 : (c == next ? 2 : 0);
 }
 
 static int getEdgeFifo(EdgeFifo fifo, unsigned int a, unsigned int b, unsigned int c, size_t offset)
@@ -116,7 +108,7 @@ static unsigned int decodeVByte(const unsigned char*& data)
 	for (int i = 0; i < 4; ++i)
 	{
 		unsigned char group = *data++;
-		result |= (group & 127) << shift;
+		result |= unsigned(group & 127) << shift;
 		shift += 7;
 
 		if (group < 128)
@@ -167,38 +159,6 @@ static void writeTriangle(void* destination, size_t offset, size_t index_size, u
 	}
 }
 
-#if TRACE
-static size_t sortTop16(unsigned char dest[16], size_t stats[256])
-{
-	size_t destsize = 0;
-
-	for (size_t i = 0; i < 256; ++i)
-	{
-		size_t j = 0;
-		for (; j < destsize; ++j)
-		{
-			if (stats[i] >= stats[dest[j]])
-			{
-				if (destsize < 16)
-					destsize++;
-
-				memmove(&dest[j + 1], &dest[j], destsize - 1 - j);
-				dest[j] = (unsigned char)i;
-				break;
-			}
-		}
-
-		if (j == destsize && destsize < 16)
-		{
-			dest[destsize] = (unsigned char)i;
-			destsize++;
-		}
-	}
-
-	return destsize;
-}
-#endif
-
 } // namespace meshopt
 
 size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, const unsigned int* indices, size_t index_count)
@@ -206,11 +166,6 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 	using namespace meshopt;
 
 	assert(index_count % 3 == 0);
-
-#if TRACE
-	size_t codestats[256] = {};
-	size_t codeauxstats[256] = {};
-#endif
 
 	// the minimum valid encoding is header, 1 byte per triangle and a 16-byte codeaux table
 	if (buffer_size < 1 + index_count / 3 + 16)
@@ -262,7 +217,7 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 			int fe = fer >> 2;
 			int fc = getVertexFifo(vertexfifo, c, vertexfifooffset);
 
-			int fec = (fc >= 1 && fc < fecmax) ? fc : (c == next) ? (next++, 0) : 15;
+			int fec = (fc >= 1 && fc < fecmax) ? fc : (c == next ? (next++, 0) : 15);
 
 			if (fec == 15 && version >= 1)
 			{
@@ -274,10 +229,6 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 			}
 
 			*code++ = (unsigned char)((fe << 4) | fec);
-
-#if TRACE
-			codestats[code[-1]]++;
-#endif
 
 			// note that we need to update the last index since free indices are delta-encoded
 			if (fec == 15)
@@ -316,8 +267,8 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 
 			// after rotation, a is almost always equal to next, so we don't waste bits on FIFO encoding for a
 			int fea = (a == next) ? (next++, 0) : 15;
-			int feb = (fb >= 0 && fb < 14) ? (fb + 1) : (b == next) ? (next++, 0) : 15;
-			int fec = (fc >= 0 && fc < 14) ? (fc + 1) : (c == next) ? (next++, 0) : 15;
+			int feb = (fb >= 0 && fb < 14) ? fb + 1 : (b == next ? (next++, 0) : 15);
+			int fec = (fc >= 0 && fc < 14) ? fc + 1 : (c == next ? (next++, 0) : 15);
 
 			// we encode feb & fec in 4 bits using a table if possible, and as a full byte otherwise
 			unsigned char codeaux = (unsigned char)((feb << 4) | fec);
@@ -333,11 +284,6 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 				*code++ = (unsigned char)((15 << 4) | 14 | fea);
 				*data++ = codeaux;
 			}
-
-#if TRACE
-			codestats[code[-1]]++;
-			codeauxstats[codeaux]++;
-#endif
 
 			// note that we need to update the last index since free indices are delta-encoded
 			if (fea == 15)
@@ -386,30 +332,6 @@ size_t meshopt_encodeIndexBuffer(unsigned char* buffer, size_t buffer_size, cons
 
 	assert(data >= buffer + index_count / 3 + 16);
 	assert(data <= buffer + buffer_size);
-
-#if TRACE
-	unsigned char codetop[16], codeauxtop[16];
-	size_t codetopsize = sortTop16(codetop, codestats);
-	size_t codeauxtopsize = sortTop16(codeauxtop, codeauxstats);
-
-	size_t sumcode = 0, sumcodeaux = 0;
-	for (size_t i = 0; i < 256; ++i)
-		sumcode += codestats[i], sumcodeaux += codeauxstats[i];
-
-	size_t acccode = 0, acccodeaux = 0;
-
-	printf("code\t\t\t\t\tcodeaux\n");
-
-	for (size_t i = 0; i < codetopsize && i < codeauxtopsize; ++i)
-	{
-		acccode += codestats[codetop[i]];
-		acccodeaux += codeauxstats[codeauxtop[i]];
-
-		printf("%2d: %02x = %d (%.1f%% ..%.1f%%)\t\t%2d: %02x = %d (%.1f%% ..%.1f%%)\n",
-		       int(i), codetop[i], int(codestats[codetop[i]]), double(codestats[codetop[i]]) / double(sumcode) * 100, double(acccode) / double(sumcode) * 100,
-		       int(i), codeauxtop[i], int(codeauxstats[codeauxtop[i]]), double(codeauxstats[codeauxtop[i]]) / double(sumcodeaux) * 100, double(acccodeaux) / double(sumcodeaux) * 100);
-	}
-#endif
 
 	return data - buffer;
 }

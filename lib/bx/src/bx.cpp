@@ -1,9 +1,8 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
-#include "bx_p.h"
 #include <bx/debug.h>
 #include <bx/readerwriter.h>
 
@@ -13,6 +12,57 @@
 
 namespace bx
 {
+	Location Location::current(const char* _filePath, uint32_t _line)
+	{
+		return Location(_filePath, _line);
+	}
+
+	LocationFull LocationFull::current(const char* _function, const char* _filePath, uint32_t _line)
+	{
+		return LocationFull(_function, _filePath, _line);
+	}
+
+	static bool defaultAssertHandler(const Location& _location, const char* _format, va_list _argList)
+	{
+		char temp[8192];
+		int32_t pos = 0;
+
+		pos += snprintf(&temp[pos], max(0, sizeof(temp)-pos), "%s(%d): "
+			, _location.filePath
+			, _location.line
+			);
+		pos += vsnprintf(&temp[pos], max(0, sizeof(temp)-pos), _format, _argList);
+		pos += snprintf(&temp[pos], max(0, sizeof(temp)-pos), "\n");
+		debugOutput(temp);
+
+		return true;
+	}
+
+	static AssertHandlerFn s_assertHandler = defaultAssertHandler;
+
+	void setAssertHandler(AssertHandlerFn _assertHandlerFn)
+	{
+		BX_WARN(defaultAssertHandler == s_assertHandler, "Assert handler is already set.");
+
+		if (defaultAssertHandler == s_assertHandler)
+		{
+			s_assertHandler = NULL == _assertHandlerFn
+				? defaultAssertHandler
+				: _assertHandlerFn
+				;
+		}
+	}
+
+	bool assertFunction(const Location& _location, const char* _format, ...)
+	{
+		va_list argList;
+		va_start(argList, _format);
+		const bool result = s_assertHandler(_location, _format, argList);
+		va_end(argList);
+
+		return result;
+	}
+
 	void swap(void* _a, void* _b, size_t _numBytes)
 	{
 		uint8_t* lhs = (uint8_t*)_a;
@@ -50,20 +100,20 @@ namespace bx
 		, const void* _src
 		, uint32_t _srcStride
 		, uint32_t _stride
-		, uint32_t _num
+		, uint32_t _numStrides
 		)
 	{
 		if (_stride == _srcStride
 		&&  _stride == _dstStride)
 		{
-			memCopy(_dst, _src, _stride*_num);
+			memCopy(_dst, _src, _stride*_numStrides);
 			return;
 		}
 
 		const uint8_t* src = (const uint8_t*)_src;
 		      uint8_t* dst = (uint8_t*)_dst;
 
-		for (uint32_t ii = 0; ii < _num; ++ii, src += _srcStride, dst += _dstStride)
+		for (uint32_t ii = 0; ii < _numStrides; ++ii, src += _srcStride, dst += _dstStride)
 		{
 			memCopy(dst, src, _stride);
 		}
@@ -108,20 +158,20 @@ namespace bx
 		, const void* _src
 		, uint32_t _srcStride
 		, uint32_t _stride
-		, uint32_t _num
+		, uint32_t _numStrides
 		)
 	{
 		if (_stride == _srcStride
 		&&  _stride == _dstStride)
 		{
-			memMove(_dst, _src, _stride*_num);
+			memMove(_dst, _src, _stride*_numStrides);
 			return;
 		}
 
 		const uint8_t* src = (const uint8_t*)_src;
 		      uint8_t* dst = (uint8_t*)_dst;
 
-		for (uint32_t ii = 0; ii < _num; ++ii, src += _srcStride, dst += _dstStride)
+		for (uint32_t ii = 0; ii < _numStrides; ++ii, src += _srcStride, dst += _dstStride)
 		{
 			memMove(dst, src, _stride);
 		}
@@ -186,15 +236,15 @@ namespace bx
 	}
 
 	///
-	void gather(void* _dst, const void* _src, uint32_t _srcStride, uint32_t _stride, uint32_t _num)
+	void gather(void* _dst, const void* _src, uint32_t _srcStride, uint32_t _stride, uint32_t _numStrides)
 	{
-		memMove(_dst, _stride, _src, _srcStride, _stride, _num);
+		memMove(_dst, _stride, _src, _srcStride, _stride, _numStrides);
 	}
 
 	///
-	void scatter(void* _dst, uint32_t _dstStride, const void* _src, uint32_t _stride, uint32_t _num)
+	void scatter(void* _dst, uint32_t _dstStride, const void* _src, uint32_t _stride, uint32_t _numStrides)
 	{
-		memMove(_dst, _dstStride, _src, _stride, _num, _stride);
+		memMove(_dst, _dstStride, _src, _stride, _stride, _numStrides);
 	}
 
 } // namespace bx

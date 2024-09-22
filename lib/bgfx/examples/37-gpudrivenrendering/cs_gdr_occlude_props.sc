@@ -1,6 +1,6 @@
 /*
  * Copyright 2018 Kostas Anagnostou. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh"
@@ -9,7 +9,7 @@ SAMPLER2D(s_texOcclusionDepth, 0);
 
 BUFFER_RO(instanceDataIn, vec4, 1);
 BUFFER_RW(drawcallInstanceCount, uint, 2);
-BUFFER_WR(instancePredicates, bool, 3);
+BUFFER_WO(instancePredicates, bool, 3);
 
 uniform vec4 u_inputRTSize;
 uniform vec4 u_cullingConfig;
