@@ -1,12 +1,12 @@
 /*
  * Copyright 2014 Stanlo Slasinski. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh"
 #include "uniforms.sh"
 
-BUFFER_WR(indirectBuffer, uvec4, 0);
+BUFFER_WO(indirectBuffer, uvec4, 0);
 
 NUM_THREADS(1, 1, 1)
 void main()

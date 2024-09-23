@@ -2,10 +2,13 @@
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <GLFW/glfw3.h>
+#include <bx/platform.h>
+#include <iostream>
 #if BX_PLATFORM_LINUX
 #define GLFW_EXPOSE_NATIVE_X11
 #elif BX_PLATFORM_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 #elif BX_PLATFORM_OSX
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
@@ -38,14 +41,23 @@ namespace Window {
         // Disable cursor
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+        // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
+        // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
         bgfxInit.type = bgfx::RendererType::Count;
         bgfxInit.resolution.width = 1600;
         bgfxInit.resolution.height = 900;
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
+        bgfxInit.debug = BGFX_DEBUG_IFH;
 
+        bgfxInit.platformData.ndt = nullptr;
         #if BX_PLATFORM_WINDOWS
+            Log::info("Windows platform detected for BGFX"); 
             bgfxInit.platformData.nwh = glfwGetWin32Window(window);
         #elif BX_PLATFORM_LINUX
             bgfxInit.platformData.ndt = glfwGetX11Display();
@@ -69,7 +81,6 @@ namespace Window {
         });
         glfwSetWindowSize(window, bgfxInit.resolution.width, bgfxInit.resolution.height);
         glfwGetWindowSize(window, &Window::width, &Window::height);
-        std::cout << Window::width << " | " << bgfxInit.resolution.width << "\n";
     }
 
     void shutdown() {

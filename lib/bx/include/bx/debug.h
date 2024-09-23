@@ -1,15 +1,18 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
+ * Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bx/blob/master/LICENSE
  */
 
 #ifndef BX_DEBUG_H_HEADER_GUARD
 #define BX_DEBUG_H_HEADER_GUARD
 
-#include "string.h"
+#include <stdint.h> // uint32_t
+#include <stdarg.h> // va_list
 
 namespace bx
 {
+	class StringView;
+
 	///
 	void debugBreak();
 

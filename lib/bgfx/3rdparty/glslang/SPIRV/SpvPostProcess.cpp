@@ -44,21 +44,20 @@
 #include <algorithm>
 
 #include "SpvBuilder.h"
-
 #include "spirv.hpp"
-#include "GlslangToSpv.h"
-#include "SpvBuilder.h"
+
 namespace spv {
     #include "GLSL.std.450.h"
     #include "GLSL.ext.KHR.h"
     #include "GLSL.ext.EXT.h"
     #include "GLSL.ext.AMD.h"
     #include "GLSL.ext.NV.h"
+    #include "GLSL.ext.ARM.h"
+    #include "GLSL.ext.QCOM.h"
 }
 
 namespace spv {
 
-#ifndef GLSLANG_WEB
 // Hook to visit each operand type and result type of an instruction.
 // Will be called multiple times for one instruction, once for each typed
 // operand and the result.
@@ -113,8 +112,6 @@ void Builder::postProcessType(const Instruction& inst, Id typeId)
             }
         }
         break;
-    case OpAccessChain:
-    case OpPtrAccessChain:
     case OpCopyObject:
         break;
     case OpFConvert:
@@ -161,26 +158,44 @@ void Builder::postProcessType(const Instruction& inst, Id typeId)
         switch (inst.getImmediateOperand(1)) {
         case GLSLstd450Frexp:
         case GLSLstd450FrexpStruct:
-            if (getSpvVersion() < glslang::EShTargetSpv_1_3 && containsType(typeId, OpTypeInt, 16))
+            if (getSpvVersion() < spv::Spv_1_3 && containsType(typeId, OpTypeInt, 16))
                 addExtension(spv::E_SPV_AMD_gpu_shader_int16);
             break;
         case GLSLstd450InterpolateAtCentroid:
         case GLSLstd450InterpolateAtSample:
         case GLSLstd450InterpolateAtOffset:
-            if (getSpvVersion() < glslang::EShTargetSpv_1_3 && containsType(typeId, OpTypeFloat, 16))
+            if (getSpvVersion() < spv::Spv_1_3 && containsType(typeId, OpTypeFloat, 16))
                 addExtension(spv::E_SPV_AMD_gpu_shader_half_float);
             break;
         default:
             break;
         }
         break;
+    case OpAccessChain:
+    case OpPtrAccessChain:
+        if (isPointerType(typeId))
+            break;
+        if (basicTypeOp == OpTypeInt) {
+            if (width == 16)
+                addCapability(CapabilityInt16);
+            else if (width == 8)
+                addCapability(CapabilityInt8);
+        }
+        break;
     default:
-        if (basicTypeOp == OpTypeFloat && width == 16)
-            addCapability(CapabilityFloat16);
-        if (basicTypeOp == OpTypeInt && width == 16)
-            addCapability(CapabilityInt16);
-        if (basicTypeOp == OpTypeInt && width == 8)
-            addCapability(CapabilityInt8);
+        if (basicTypeOp == OpTypeInt) {
+            if (width == 16)
+                addCapability(CapabilityInt16);
+            else if (width == 8)
+                addCapability(CapabilityInt8);
+            else if (width == 64)
+                addCapability(CapabilityInt64);
+        } else if (basicTypeOp == OpTypeFloat) {
+            if (width == 16)
+                addCapability(CapabilityFloat16);
+            else if (width == 64)
+                addCapability(CapabilityFloat64);
+        }
         break;
     }
 }
@@ -320,7 +335,6 @@ void Builder::postProcess(Instruction& inst)
         }
     }
 }
-#endif
 
 // comment in header
 void Builder::postProcessCFG()
@@ -373,15 +387,16 @@ void Builder::postProcessCFG()
     }
 
     // Remove unneeded decorations, for unreachable instructions
-    decorations.erase(std::remove_if(decorations.begin(), decorations.end(),
-        [&unreachableDefinitions](std::unique_ptr<Instruction>& I) -> bool {
-            Id decoration_id = I.get()->getIdOperand(0);
-            return unreachableDefinitions.count(decoration_id) != 0;
-        }),
-        decorations.end());
+    for (auto decorationIter = decorations.begin(); decorationIter != decorations.end();) {
+        Id decorationId = (*decorationIter)->getIdOperand(0);
+        if (unreachableDefinitions.count(decorationId) != 0) {
+            decorationIter = decorations.erase(decorationIter);
+        } else {
+            ++decorationIter;
+        }
+    }
 }
 
-#ifndef GLSLANG_WEB
 // comment in header
 void Builder::postProcessFeatures() {
     // Add per-instruction capabilities, extensions, etc.,
@@ -436,15 +451,101 @@ void Builder::postProcessFeatures() {
             }
         }
     }
+
+    // If any Vulkan memory model-specific functionality is used, update the
+    // OpMemoryModel to match.
+    if (capabilities.find(spv::CapabilityVulkanMemoryModelKHR) != capabilities.end()) {
+        memoryModel = spv::MemoryModelVulkanKHR;
+        addIncorporatedExtension(spv::E_SPV_KHR_vulkan_memory_model, spv::Spv_1_5);
+    }
+
+    // Add Aliased decoration if there's more than one Workgroup Block variable.
+    if (capabilities.find(spv::CapabilityWorkgroupMemoryExplicitLayoutKHR) != capabilities.end()) {
+        assert(entryPoints.size() == 1);
+        auto &ep = entryPoints[0];
+
+        std::vector<Id> workgroup_variables;
+        for (int i = 0; i < (int)ep->getNumOperands(); i++) {
+            if (!ep->isIdOperand(i))
+                continue;
+
+            const Id id = ep->getIdOperand(i);
+            const Instruction *instr = module.getInstruction(id);
+            if (instr->getOpCode() != spv::OpVariable)
+                continue;
+
+            if (instr->getImmediateOperand(0) == spv::StorageClassWorkgroup)
+                workgroup_variables.push_back(id);
+        }
+
+        if (workgroup_variables.size() > 1) {
+            for (size_t i = 0; i < workgroup_variables.size(); i++)
+                addDecoration(workgroup_variables[i], spv::DecorationAliased);
+        }
+    }
 }
-#endif
+
+// SPIR-V requires that any instruction consuming the result of an OpSampledImage
+// be in the same block as the OpSampledImage instruction. This pass goes finds
+// uses of OpSampledImage where that is not the case and duplicates the
+// OpSampledImage to be immediately before the instruction that consumes it.
+// The old OpSampledImage is left in place, potentially with no users.
+void Builder::postProcessSamplers()
+{
+    // first, find all OpSampledImage instructions and store them in a map.
+    std::map<Id, Instruction*> sampledImageInstrs;
+    for (auto f: module.getFunctions()) {
+	for (auto b: f->getBlocks()) {
+	    for (auto &i: b->getInstructions()) {
+		if (i->getOpCode() == spv::OpSampledImage) {
+		    sampledImageInstrs[i->getResultId()] = i.get();
+		}
+	    }
+	}
+    }
+    // next find all uses of the given ids and rewrite them if needed.
+    for (auto f: module.getFunctions()) {
+	for (auto b: f->getBlocks()) {
+            auto &instrs = b->getInstructions();
+            for (size_t idx = 0; idx < instrs.size(); idx++) {
+                Instruction *i = instrs[idx].get();
+                for (int opnum = 0; opnum < i->getNumOperands(); opnum++) {
+                    // Is this operand of the current instruction the result of an OpSampledImage?
+                    if (i->isIdOperand(opnum) &&
+                        sampledImageInstrs.count(i->getIdOperand(opnum)))
+                    {
+                        Instruction *opSampImg = sampledImageInstrs[i->getIdOperand(opnum)];
+                        if (i->getBlock() != opSampImg->getBlock()) {
+                            Instruction *newInstr = new Instruction(getUniqueId(),
+                                                                    opSampImg->getTypeId(),
+                                                                    spv::OpSampledImage);
+                            newInstr->addIdOperand(opSampImg->getIdOperand(0));
+                            newInstr->addIdOperand(opSampImg->getIdOperand(1));
+                            newInstr->setBlock(b);
+
+                            // rewrite the user of the OpSampledImage to use the new instruction.
+                            i->setIdOperand(opnum, newInstr->getResultId());
+                            // insert the new OpSampledImage right before the current instruction.
+                            instrs.insert(instrs.begin() + idx,
+                                    std::unique_ptr<Instruction>(newInstr));
+                            idx++;
+                        }
+                    }
+                }
+            }
+	}
+    }
+}
 
 // comment in header
-void Builder::postProcess() {
-  postProcessCFG();
-#ifndef GLSLANG_WEB
-  postProcessFeatures();
-#endif
+void Builder::postProcess(bool compileOnly)
+{
+    // postProcessCFG needs an entrypoint to determine what is reachable, but if we are not creating an "executable" shader, we don't have an entrypoint
+    if (!compileOnly)
+        postProcessCFG();
+
+    postProcessFeatures();
+    postProcessSamplers();
 }
 
 }; // end spv namespace

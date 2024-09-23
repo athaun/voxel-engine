@@ -65,6 +65,10 @@ enum TBasicType {
     EbtAccStruct,
     EbtReference,
     EbtRayQuery,
+    EbtHitObjectNV,
+    EbtCoopmat,
+    // SPIR-V type defined by spirv_type
+    EbtSpirvType,
 
     // HLSL types that live only temporarily.
     EbtString,
@@ -91,12 +95,16 @@ enum TStorageQualifier {
     EvqUniform,       // read only, shared with app
     EvqBuffer,        // read/write, shared with app
     EvqShared,        // compute shader's read/write 'shared' qualifier
+    EvqSpirvStorageClass, // spirv_storage_class
 
     EvqPayload,
     EvqPayloadIn,
     EvqHitAttr,
     EvqCallableData,
     EvqCallableDataIn,
+    EvqHitObjectAttrNV,
+
+    EvqtaskPayloadSharedEXT,
 
     // parameters
     EvqIn,            // also, for 'in' in the grammar before we know if it's a pipeline input or an 'in' parameter
@@ -121,6 +129,9 @@ enum TStorageQualifier {
     // built-ins written by fragment shader
     EvqFragColor,
     EvqFragDepth,
+    EvqFragStencil,
+
+    EvqTileImageEXT,
 
     // end of list
     EvqLast
@@ -256,16 +267,19 @@ enum TBuiltInVariable {
     EbvObjectRayDirection,
     EbvRayTmin,
     EbvRayTmax,
-    EbvHitT,
+    EbvCullMask,
     EbvHitKind,
     EbvObjectToWorld,
     EbvObjectToWorld3x4,
     EbvWorldToObject,
     EbvWorldToObject3x4,
     EbvIncomingRayFlags,
+    EbvCurrentRayTimeNV,
     // barycentrics
     EbvBaryCoordNV,
     EbvBaryCoordNoPerspNV,
+    EbvBaryCoordEXT,
+    EbvBaryCoordNoPerspEXT,
     // mesh shaders
     EbvTaskCountNV,
     EbvPrimitiveCountNV,
@@ -275,6 +289,17 @@ enum TBuiltInVariable {
     EbvLayerPerViewNV,
     EbvMeshViewCountNV,
     EbvMeshViewIndicesNV,
+
+    EbvMicroTrianglePositionNV,
+    EbvMicroTriangleBaryNV,
+    EbvHitKindFrontFacingMicroTriangleNV,
+    EbvHitKindBackFacingMicroTriangleNV,
+
+    //GL_EXT_mesh_shader
+    EbvPrimitivePointIndicesEXT,
+    EbvPrimitiveLineIndicesEXT,
+    EbvPrimitiveTriangleIndicesEXT,
+    EbvCullPrimitiveEXT,
 
     // sm builtins
     EbvWarpsPerSM,
@@ -297,6 +322,15 @@ enum TBuiltInVariable {
     EbvByteAddressBuffer,
     EbvRWByteAddressBuffer,
 
+    // ARM specific core builtins
+    EbvCoreCountARM,
+    EbvCoreIDARM,
+    EbvCoreMaxIDARM,
+    EbvWarpIDARM,
+    EbvWarpMaxIDARM,
+
+    EbvPositionFetch,
+
     EbvLast
 };
 
@@ -309,10 +343,6 @@ enum TPrecisionQualifier {
     EpqHigh
 };
 
-#ifdef GLSLANG_WEB
-__inline const char* GetStorageQualifierString(TStorageQualifier q) { return ""; }
-__inline const char* GetPrecisionQualifierString(TPrecisionQualifier p) { return ""; }
-#else
 // These will show up in error messages
 __inline const char* GetStorageQualifierString(TStorageQualifier q)
 {
@@ -321,6 +351,7 @@ __inline const char* GetStorageQualifierString(TStorageQualifier q)
     case EvqGlobal:         return "global";         break;
     case EvqConst:          return "const";          break;
     case EvqConstReadOnly:  return "const (read only)"; break;
+    case EvqSpirvStorageClass: return "spirv_storage_class"; break;
     case EvqVaryingIn:      return "in";             break;
     case EvqVaryingOut:     return "out";            break;
     case EvqUniform:        return "uniform";        break;
@@ -339,11 +370,14 @@ __inline const char* GetStorageQualifierString(TStorageQualifier q)
     case EvqPointCoord:     return "gl_PointCoord";  break;
     case EvqFragColor:      return "fragColor";      break;
     case EvqFragDepth:      return "gl_FragDepth";   break;
+    case EvqFragStencil:    return "gl_FragStencilRefARB"; break;
     case EvqPayload:        return "rayPayloadNV";     break;
     case EvqPayloadIn:      return "rayPayloadInNV";   break;
     case EvqHitAttr:        return "hitAttributeNV";   break;
     case EvqCallableData:   return "callableDataNV";   break;
     case EvqCallableDataIn: return "callableDataInNV"; break;
+    case EvqtaskPayloadSharedEXT: return "taskPayloadSharedEXT"; break;
+    case EvqHitObjectAttrNV:return "hitObjectAttributeNV"; break;
     default:                return "unknown qualifier";
     }
 }
@@ -460,14 +494,16 @@ __inline const char* GetBuiltInVariableString(TBuiltInVariable v)
     case EbvObjectRayDirection:         return "ObjectRayDirectionNV";
     case EbvRayTmin:                    return "ObjectRayTminNV";
     case EbvRayTmax:                    return "ObjectRayTmaxNV";
-    case EbvHitT:                       return "HitTNV";
     case EbvHitKind:                    return "HitKindNV";
     case EbvIncomingRayFlags:           return "IncomingRayFlagsNV";
     case EbvObjectToWorld:              return "ObjectToWorldNV";
     case EbvWorldToObject:              return "WorldToObjectNV";
+    case EbvCurrentRayTimeNV:           return "CurrentRayTimeNV";
 
-    case EbvBaryCoordNV:                return "BaryCoordNV";
-    case EbvBaryCoordNoPerspNV:         return "BaryCoordNoPerspNV";
+    case EbvBaryCoordEXT:
+    case EbvBaryCoordNV:                return "BaryCoordKHR";
+    case EbvBaryCoordNoPerspEXT:
+    case EbvBaryCoordNoPerspNV:         return "BaryCoordNoPerspKHR";
 
     case EbvTaskCountNV:                return "TaskCountNV";
     case EbvPrimitiveCountNV:           return "PrimitiveCountNV";
@@ -477,6 +513,11 @@ __inline const char* GetBuiltInVariableString(TBuiltInVariable v)
     case EbvLayerPerViewNV:             return "LayerPerViewNV";
     case EbvMeshViewCountNV:            return "MeshViewCountNV";
     case EbvMeshViewIndicesNV:          return "MeshViewIndicesNV";
+    // GL_EXT_mesh_shader
+    case EbvPrimitivePointIndicesEXT:    return "PrimitivePointIndicesEXT";
+    case EbvPrimitiveLineIndicesEXT:     return "PrimitiveLineIndicesEXT";
+    case EbvPrimitiveTriangleIndicesEXT: return "PrimitiveTriangleIndicesEXT";
+    case EbvCullPrimitiveEXT:            return "CullPrimitiveEXT";
 
     case EbvWarpsPerSM:                 return "WarpsPerSMNV";
     case EbvSMCount:                    return "SMCountNV";
@@ -485,6 +526,9 @@ __inline const char* GetBuiltInVariableString(TBuiltInVariable v)
 
     case EbvShadingRateKHR:             return "ShadingRateKHR";
     case EbvPrimitiveShadingRateKHR:    return "PrimitiveShadingRateKHR";
+
+    case EbvHitKindFrontFacingMicroTriangleNV: return "HitKindFrontFacingMicroTriangleNV";
+    case EbvHitKindBackFacingMicroTriangleNV:  return "HitKindBackFacingMicroTriangleNV";
 
     default:                      return "unknown built-in variable";
     }
@@ -500,7 +544,6 @@ __inline const char* GetPrecisionQualifierString(TPrecisionQualifier p)
     default:        return "unknown precision qualifier";
     }
 }
-#endif
 
 __inline bool isTypeSignedInt(TBasicType type)
 {

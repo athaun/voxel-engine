@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Attila Kocsis. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh" 
 #include "uniforms.sh"
 
-IMAGE2D_WR(s_target, r8, 0);
+IMAGE2D_WO(s_target, r8, 0);
 SAMPLER2D(s_importanceMap, 1);
 BUFFER_RW(s_loadCounter, uint, 2);
 

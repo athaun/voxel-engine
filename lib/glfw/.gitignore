@@ -1,5 +1,6 @@
 # The canonical out-of-tree build subdirectory
 build
+build-*
 
 # Visual Studio clutter
 _ReSharper*
@@ -56,11 +57,11 @@ src/glfw3ConfigVersion.cmake
 # Compiled binaries
 src/libglfw.so
 src/libglfw.so.3
-src/libglfw.so.3.4
+src/libglfw.so.3.5
 src/libglfw.dylib
 src/libglfw.dylib
 src/libglfw.3.dylib
-src/libglfw.3.4.dylib
+src/libglfw.3.5.dylib
 src/libglfw3.a
 src/glfw3.lib
 src/glfw3.dll
@@ -77,6 +78,7 @@ examples/splitview
 examples/sharing
 examples/triangle-opengl
 examples/wave
+examples/windows
 tests/*.app
 tests/*.exe
 tests/clipboard
@@ -87,6 +89,7 @@ tests/gamma
 tests/glfwinfo
 tests/icon
 tests/iconify
+tests/inputlag
 tests/joysticks
 tests/monitors
 tests/msaa

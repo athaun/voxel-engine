@@ -1,6 +1,6 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "common.h"
@@ -23,13 +23,13 @@ namespace stl = tinystl;
 
 #include <bimg/decode.h>
 
-void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _filePath, uint32_t* _size)
+void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const bx::FilePath& _filePath, uint32_t* _size)
 {
 	if (bx::open(_reader, _filePath) )
 	{
 		uint32_t size = (uint32_t)bx::getSize(_reader);
-		void* data = BX_ALLOC(_allocator, size);
-		bx::read(_reader, data, size);
+		void* data = bx::alloc(_allocator, size);
+		bx::read(_reader, data, size, bx::ErrorAssert{});
 		bx::close(_reader);
 		if (NULL != _size)
 		{
@@ -39,7 +39,7 @@ void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _fi
 	}
 	else
 	{
-		DBG("Failed to open: %s.", _filePath);
+		DBG("Failed to open: %s.", _filePath.getCPtr() );
 	}
 
 	if (NULL != _size)
@@ -50,39 +50,39 @@ void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _fi
 	return NULL;
 }
 
-void* load(const char* _filePath, uint32_t* _size)
+void* load(const bx::FilePath& _filePath, uint32_t* _size)
 {
 	return load(entry::getFileReader(), entry::getAllocator(), _filePath, _size);
 }
 
 void unload(void* _ptr)
 {
-	BX_FREE(entry::getAllocator(), _ptr);
+	bx::free(entry::getAllocator(), _ptr);
 }
 
-static const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const char* _filePath)
+static const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const bx::FilePath& _filePath)
 {
 	if (bx::open(_reader, _filePath) )
 	{
 		uint32_t size = (uint32_t)bx::getSize(_reader);
 		const bgfx::Memory* mem = bgfx::alloc(size+1);
-		bx::read(_reader, mem->data, size);
+		bx::read(_reader, mem->data, size, bx::ErrorAssert{});
 		bx::close(_reader);
 		mem->data[mem->size-1] = '\0';
 		return mem;
 	}
 
-	DBG("Failed to load %s.", _filePath);
+	DBG("Failed to load %s.", _filePath.getCPtr() );
 	return NULL;
 }
 
-static void* loadMem(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _filePath, uint32_t* _size)
+static void* loadMem(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const bx::FilePath& _filePath, uint32_t* _size)
 {
 	if (bx::open(_reader, _filePath) )
 	{
 		uint32_t size = (uint32_t)bx::getSize(_reader);
-		void* data = BX_ALLOC(_allocator, size);
-		bx::read(_reader, data, size);
+		void* data = bx::alloc(_allocator, size);
+		bx::read(_reader, data, size, bx::ErrorAssert{});
 		bx::close(_reader);
 
 		if (NULL != _size)
@@ -92,55 +92,54 @@ static void* loadMem(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const
 		return data;
 	}
 
-	DBG("Failed to load %s.", _filePath);
+	DBG("Failed to load %s.", _filePath.getCPtr() );
 	return NULL;
 }
 
-static bgfx::ShaderHandle loadShader(bx::FileReaderI* _reader, const char* _name)
+static bgfx::ShaderHandle loadShader(bx::FileReaderI* _reader, const bx::StringView& _name)
 {
-	char filePath[512];
-
-	const char* shaderPath = "???";
+	bx::FilePath filePath("shaders/");
 
 	switch (bgfx::getRendererType() )
 	{
 	case bgfx::RendererType::Noop:
-	case bgfx::RendererType::Direct3D9:  shaderPath = "shaders/dx9/";   break;
 	case bgfx::RendererType::Direct3D11:
-	case bgfx::RendererType::Direct3D12: shaderPath = "shaders/dx11/";  break;
-	case bgfx::RendererType::Gnm:        shaderPath = "shaders/pssl/";  break;
-	case bgfx::RendererType::Metal:      shaderPath = "shaders/metal/"; break;
-	case bgfx::RendererType::Nvn:        shaderPath = "shaders/nvn/";   break;
-	case bgfx::RendererType::OpenGL:     shaderPath = "shaders/glsl/";  break;
-	case bgfx::RendererType::OpenGLES:   shaderPath = "shaders/essl/";  break;
-	case bgfx::RendererType::Vulkan:     shaderPath = "shaders/spirv/"; break;
-	case bgfx::RendererType::WebGPU:     shaderPath = "shaders/spirv/"; break;
+	case bgfx::RendererType::Direct3D12: filePath.join("dx11");  break;
+	case bgfx::RendererType::Agc:
+	case bgfx::RendererType::Gnm:        filePath.join("pssl");  break;
+	case bgfx::RendererType::Metal:      filePath.join("metal"); break;
+	case bgfx::RendererType::Nvn:        filePath.join("nvn");   break;
+	case bgfx::RendererType::OpenGL:     filePath.join("glsl");  break;
+	case bgfx::RendererType::OpenGLES:   filePath.join("essl");  break;
+	case bgfx::RendererType::Vulkan:     filePath.join("spirv"); break;
 
 	case bgfx::RendererType::Count:
 		BX_ASSERT(false, "You should not be here!");
 		break;
 	}
 
-	bx::strCopy(filePath, BX_COUNTOF(filePath), shaderPath);
-	bx::strCat(filePath, BX_COUNTOF(filePath), _name);
-	bx::strCat(filePath, BX_COUNTOF(filePath), ".bin");
+	char fileName[512];
+	bx::strCopy(fileName, BX_COUNTOF(fileName), _name);
+	bx::strCat(fileName, BX_COUNTOF(fileName), ".bin");
 
-	bgfx::ShaderHandle handle = bgfx::createShader(loadMem(_reader, filePath) );
-	bgfx::setName(handle, _name);
+	filePath.join(fileName);
+
+	bgfx::ShaderHandle handle = bgfx::createShader(loadMem(_reader, filePath.getCPtr() ) );
+	bgfx::setName(handle, _name.getPtr(), _name.getLength() );
 
 	return handle;
 }
 
-bgfx::ShaderHandle loadShader(const char* _name)
+bgfx::ShaderHandle loadShader(const bx::StringView& _name)
 {
 	return loadShader(entry::getFileReader(), _name);
 }
 
-bgfx::ProgramHandle loadProgram(bx::FileReaderI* _reader, const char* _vsName, const char* _fsName)
+bgfx::ProgramHandle loadProgram(bx::FileReaderI* _reader, const bx::StringView& _vsName, const bx::StringView& _fsName)
 {
 	bgfx::ShaderHandle vsh = loadShader(_reader, _vsName);
 	bgfx::ShaderHandle fsh = BGFX_INVALID_HANDLE;
-	if (NULL != _fsName)
+	if (!_fsName.isEmpty() )
 	{
 		fsh = loadShader(_reader, _fsName);
 	}
@@ -148,7 +147,7 @@ bgfx::ProgramHandle loadProgram(bx::FileReaderI* _reader, const char* _vsName, c
 	return bgfx::createProgram(vsh, fsh, true /* destroy shaders when program is destroyed */);
 }
 
-bgfx::ProgramHandle loadProgram(const char* _vsName, const char* _fsName)
+bgfx::ProgramHandle loadProgram(const bx::StringView& _vsName, const bx::StringView& _fsName)
 {
 	return loadProgram(entry::getFileReader(), _vsName, _fsName);
 }
@@ -160,7 +159,7 @@ static void imageReleaseCb(void* _ptr, void* _userData)
 	bimg::imageFree(imageContainer);
 }
 
-bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation)
+bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const bx::FilePath& _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation)
 {
 	BX_UNUSED(_skip);
 	bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
@@ -185,6 +184,20 @@ bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath,
 					, imageContainer
 					);
 			unload(data);
+
+			if (NULL != _info)
+			{
+				bgfx::calcTextureSize(
+					*_info
+					, uint16_t(imageContainer->m_width)
+					, uint16_t(imageContainer->m_height)
+					, uint16_t(imageContainer->m_depth)
+					, imageContainer->m_cubeMap
+					, 1 < imageContainer->m_numMips
+					, imageContainer->m_numLayers
+					, bgfx::TextureFormat::Enum(imageContainer->m_format)
+				);
+			}
 
 			if (imageContainer->m_cubeMap)
 			{
@@ -224,21 +237,8 @@ bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath,
 
 			if (bgfx::isValid(handle) )
 			{
-				bgfx::setName(handle, _filePath);
-			}
-
-			if (NULL != _info)
-			{
-				bgfx::calcTextureSize(
-					  *_info
-					, uint16_t(imageContainer->m_width)
-					, uint16_t(imageContainer->m_height)
-					, uint16_t(imageContainer->m_depth)
-					, imageContainer->m_cubeMap
-					, 1 < imageContainer->m_numMips
-					, imageContainer->m_numLayers
-					, bgfx::TextureFormat::Enum(imageContainer->m_format)
-					);
+				const bx::StringView name(_filePath);
+				bgfx::setName(handle, name.getPtr(), name.getLength() );
 			}
 		}
 	}
@@ -246,12 +246,12 @@ bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath,
 	return handle;
 }
 
-bgfx::TextureHandle loadTexture(const char* _name, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation)
+bgfx::TextureHandle loadTexture(const bx::FilePath& _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation)
 {
-	return loadTexture(entry::getFileReader(), _name, _flags, _skip, _info, _orientation);
+	return loadTexture(entry::getFileReader(), _filePath, _flags, _skip, _info, _orientation);
 }
 
-bimg::ImageContainer* imageLoad(const char* _filePath, bgfx::TextureFormat::Enum _dstFormat)
+bimg::ImageContainer* imageLoad(const bx::FilePath& _filePath, bgfx::TextureFormat::Enum _dstFormat)
 {
 	uint32_t size = 0;
 	void* data = loadMem(entry::getFileReader(), entry::getAllocator(), _filePath, &size);
@@ -374,7 +374,7 @@ void Group::reset()
 
 namespace bgfx
 {
-	int32_t read(bx::ReaderI* _reader, bgfx::VertexLayout& _layout, bx::Error* _err = NULL);
+	int32_t read(bx::ReaderI* _reader, bgfx::VertexLayout& _layout, bx::Error* _err);
 }
 
 void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
@@ -401,21 +401,21 @@ void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
 		{
 			case kChunkVertexBuffer:
 			{
-				read(_reader, group.m_sphere);
-				read(_reader, group.m_aabb);
-				read(_reader, group.m_obb);
+				read(_reader, group.m_sphere, &err);
+				read(_reader, group.m_aabb, &err);
+				read(_reader, group.m_obb, &err);
 
-				read(_reader, m_layout);
+				read(_reader, m_layout, &err);
 
 				uint16_t stride = m_layout.getStride();
 
-				read(_reader, group.m_numVertices);
+				read(_reader, group.m_numVertices, &err);
 				const bgfx::Memory* mem = bgfx::alloc(group.m_numVertices*stride);
-				read(_reader, mem->data, mem->size);
+				read(_reader, mem->data, mem->size, &err);
 
 				if (_ramcopy)
 				{
-					group.m_vertices = (uint8_t*)BX_ALLOC(allocator, group.m_numVertices*stride);
+					group.m_vertices = (uint8_t*)bx::alloc(allocator, group.m_numVertices*stride);
 					bx::memCopy(group.m_vertices, mem->data, mem->size);
 				}
 
@@ -425,31 +425,31 @@ void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
 
 			case kChunkVertexBufferCompressed:
 			{
-				read(_reader, group.m_sphere);
-				read(_reader, group.m_aabb);
-				read(_reader, group.m_obb);
+				read(_reader, group.m_sphere, &err);
+				read(_reader, group.m_aabb, &err);
+				read(_reader, group.m_obb, &err);
 
-				read(_reader, m_layout);
+				read(_reader, m_layout, &err);
 
 				uint16_t stride = m_layout.getStride();
 
-				read(_reader, group.m_numVertices);
+				read(_reader, group.m_numVertices, &err);
 
 				const bgfx::Memory* mem = bgfx::alloc(group.m_numVertices*stride);
 
 				uint32_t compressedSize;
-				bx::read(_reader, compressedSize);
+				bx::read(_reader, compressedSize, &err);
 
-				void* compressedVertices = BX_ALLOC(allocator, compressedSize);
-				bx::read(_reader, compressedVertices, compressedSize);
+				void* compressedVertices = bx::alloc(allocator, compressedSize);
+				bx::read(_reader, compressedVertices, compressedSize, &err);
 
 				meshopt_decodeVertexBuffer(mem->data, group.m_numVertices, stride, (uint8_t*)compressedVertices, compressedSize);
 
-				BX_FREE(allocator, compressedVertices);
+				bx::free(allocator, compressedVertices);
 
 				if (_ramcopy)
 				{
-					group.m_vertices = (uint8_t*)BX_ALLOC(allocator, group.m_numVertices*stride);
+					group.m_vertices = (uint8_t*)bx::alloc(allocator, group.m_numVertices*stride);
 					bx::memCopy(group.m_vertices, mem->data, mem->size);
 				}
 
@@ -459,13 +459,14 @@ void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
 
 			case kChunkIndexBuffer:
 			{
-				read(_reader, group.m_numIndices);
+				read(_reader, group.m_numIndices, &err);
+
 				const bgfx::Memory* mem = bgfx::alloc(group.m_numIndices*2);
-				read(_reader, mem->data, mem->size);
+				read(_reader, mem->data, mem->size, &err);
 
 				if (_ramcopy)
 				{
-					group.m_indices = (uint16_t*)BX_ALLOC(allocator, group.m_numIndices*2);
+					group.m_indices = (uint16_t*)bx::alloc(allocator, group.m_numIndices*2);
 					bx::memCopy(group.m_indices, mem->data, mem->size);
 				}
 
@@ -475,24 +476,24 @@ void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
 
 			case kChunkIndexBufferCompressed:
 			{
-				bx::read(_reader, group.m_numIndices);
+				bx::read(_reader, group.m_numIndices, &err);
 
 				const bgfx::Memory* mem = bgfx::alloc(group.m_numIndices*2);
 
 				uint32_t compressedSize;
-				bx::read(_reader, compressedSize);
+				bx::read(_reader, compressedSize, &err);
 
-				void* compressedIndices = BX_ALLOC(allocator, compressedSize);
+				void* compressedIndices = bx::alloc(allocator, compressedSize);
 
-				bx::read(_reader, compressedIndices, compressedSize);
+				bx::read(_reader, compressedIndices, compressedSize, &err);
 
 				meshopt_decodeIndexBuffer(mem->data, group.m_numIndices, 2, (uint8_t*)compressedIndices, compressedSize);
 
-				BX_FREE(allocator, compressedIndices);
+				bx::free(allocator, compressedIndices);
 
 				if (_ramcopy)
 				{
-					group.m_indices = (uint16_t*)BX_ALLOC(allocator, group.m_numIndices*2);
+					group.m_indices = (uint16_t*)bx::alloc(allocator, group.m_numIndices*2);
 					bx::memCopy(group.m_indices, mem->data, mem->size);
 				}
 
@@ -503,31 +504,31 @@ void Mesh::load(bx::ReaderSeekerI* _reader, bool _ramcopy)
 			case kChunkPrimitive:
 			{
 				uint16_t len;
-				read(_reader, len);
+				read(_reader, len, &err);
 
 				stl::string material;
 				material.resize(len);
-				read(_reader, const_cast<char*>(material.c_str() ), len);
+				read(_reader, const_cast<char*>(material.c_str() ), len, &err);
 
 				uint16_t num;
-				read(_reader, num);
+				read(_reader, num, &err);
 
 				for (uint32_t ii = 0; ii < num; ++ii)
 				{
-					read(_reader, len);
+					read(_reader, len, &err);
 
 					stl::string name;
 					name.resize(len);
-					read(_reader, const_cast<char*>(name.c_str() ), len);
+					read(_reader, const_cast<char*>(name.c_str() ), len, &err);
 
 					Primitive prim;
-					read(_reader, prim.m_startIndex);
-					read(_reader, prim.m_numIndices);
-					read(_reader, prim.m_startVertex);
-					read(_reader, prim.m_numVertices);
-					read(_reader, prim.m_sphere);
-					read(_reader, prim.m_aabb);
-					read(_reader, prim.m_obb);
+					read(_reader, prim.m_startIndex, &err);
+					read(_reader, prim.m_numIndices, &err);
+					read(_reader, prim.m_startVertex, &err);
+					read(_reader, prim.m_numVertices, &err);
+					read(_reader, prim.m_sphere, &err);
+					read(_reader, prim.m_aabb, &err);
+					read(_reader, prim.m_obb, &err);
 
 					group.m_prims.push_back(prim);
 				}
@@ -560,12 +561,12 @@ void Mesh::unload()
 
 		if (NULL != group.m_vertices)
 		{
-			BX_FREE(allocator, group.m_vertices);
+			bx::free(allocator, group.m_vertices);
 		}
 
 		if (NULL != group.m_indices)
 		{
-			BX_FREE(allocator, group.m_indices);
+			bx::free(allocator, group.m_indices);
 		}
 	}
 	m_groups.clear();
@@ -594,8 +595,16 @@ void Mesh::submit(bgfx::ViewId _id, bgfx::ProgramHandle _program, const float* _
 
 		bgfx::setIndexBuffer(group.m_ibh);
 		bgfx::setVertexBuffer(0, group.m_vbh);
-		bgfx::submit(_id, _program, 0, (it == itEnd-1) ? (BGFX_DISCARD_INDEX_BUFFER | BGFX_DISCARD_VERTEX_STREAMS | BGFX_DISCARD_STATE) : BGFX_DISCARD_NONE);
+		bgfx::submit(
+			  _id
+			, _program
+			, 0
+			, BGFX_DISCARD_INDEX_BUFFER
+			| BGFX_DISCARD_VERTEX_STREAMS
+			);
 	}
+
+	bgfx::discard();
 }
 
 void Mesh::submit(const MeshState*const* _state, uint8_t _numPasses, const float* _mtx, uint16_t _numMatrices) const
@@ -630,10 +639,19 @@ void Mesh::submit(const MeshState*const* _state, uint8_t _numPasses, const float
 				  state.m_viewId
 				, state.m_program
 				, 0
-				, (it == itEnd - 1) ? (BGFX_DISCARD_INDEX_BUFFER | BGFX_DISCARD_VERTEX_STREAMS | BGFX_DISCARD_STATE) : BGFX_DISCARD_NONE
+				, BGFX_DISCARD_INDEX_BUFFER
+				| BGFX_DISCARD_VERTEX_STREAMS
 				);
 		}
+
+		bgfx::discard(0
+			| BGFX_DISCARD_BINDINGS
+			| BGFX_DISCARD_STATE
+			| BGFX_DISCARD_TRANSFORM
+			);
 	}
+
+	bgfx::discard();
 }
 
 Mesh* meshLoad(bx::ReaderSeekerI* _reader, bool _ramcopy)
@@ -643,7 +661,7 @@ Mesh* meshLoad(bx::ReaderSeekerI* _reader, bool _ramcopy)
 	return mesh;
 }
 
-Mesh* meshLoad(const char* _filePath, bool _ramcopy)
+Mesh* meshLoad(const bx::FilePath& _filePath, bool _ramcopy)
 {
 	bx::FileReaderI* reader = entry::getFileReader();
 	if (bx::open(reader, _filePath) )
@@ -664,13 +682,13 @@ void meshUnload(Mesh* _mesh)
 
 MeshState* meshStateCreate()
 {
-	MeshState* state = (MeshState*)BX_ALLOC(entry::getAllocator(), sizeof(MeshState) );
+	MeshState* state = (MeshState*)bx::alloc(entry::getAllocator(), sizeof(MeshState) );
 	return state;
 }
 
 void meshStateDestroy(MeshState* _meshState)
 {
-	BX_FREE(entry::getAllocator(), _meshState);
+	bx::free(entry::getAllocator(), _meshState);
 }
 
 void meshSubmit(const Mesh* _mesh, bgfx::ViewId _id, bgfx::ProgramHandle _program, const float* _mtx, uint64_t _state)
@@ -681,6 +699,52 @@ void meshSubmit(const Mesh* _mesh, bgfx::ViewId _id, bgfx::ProgramHandle _progra
 void meshSubmit(const Mesh* _mesh, const MeshState*const* _state, uint8_t _numPasses, const float* _mtx, uint16_t _numMatrices)
 {
 	_mesh->submit(_state, _numPasses, _mtx, _numMatrices);
+}
+
+struct RendererTypeRemap
+{
+	bx::StringView           name;
+	bgfx::RendererType::Enum type;
+};
+
+static RendererTypeRemap s_rendererTypeRemap[] =
+{
+	{ "d3d11", bgfx::RendererType::Direct3D11 },
+	{ "d3d12", bgfx::RendererType::Direct3D12 },
+	{ "gl",    bgfx::RendererType::OpenGL     },
+	{ "mtl",   bgfx::RendererType::Metal      },
+	{ "noop",  bgfx::RendererType::Noop       },
+	{ "vk",    bgfx::RendererType::Vulkan     },
+};
+
+bx::StringView getName(bgfx::RendererType::Enum _type)
+{
+	for (uint32_t ii = 0; ii < BX_COUNTOF(s_rendererTypeRemap); ++ii)
+	{
+		const RendererTypeRemap& remap = s_rendererTypeRemap[ii];
+
+		if (_type == remap.type)
+		{
+			return remap.name;
+		}
+	}
+
+	return "";
+}
+
+bgfx::RendererType::Enum getType(const bx::StringView& _name)
+{
+	for (uint32_t ii = 0; ii < BX_COUNTOF(s_rendererTypeRemap); ++ii)
+	{
+		const RendererTypeRemap& remap = s_rendererTypeRemap[ii];
+
+		if (0 == bx::strCmpI(_name, remap.name) )
+		{
+			return remap.type;
+		}
+	}
+
+	return bgfx::RendererType::Count;
 }
 
 Args::Args(int _argc, const char* const* _argv)
@@ -701,20 +765,13 @@ Args::Args(int _argc, const char* const* _argv)
 	{
 		m_type = bgfx::RendererType::Noop;
 	}
-	else if (BX_ENABLED(BX_PLATFORM_WINDOWS|BX_PLATFORM_WINRT|BX_PLATFORM_XBOXONE) )
+	else if (cmdLine.hasArg("d3d11") )
 	{
-		if (cmdLine.hasArg("d3d9") )
-		{
-			m_type = bgfx::RendererType::Direct3D9;
-		}
-		else if (cmdLine.hasArg("d3d11") )
-		{
-			m_type = bgfx::RendererType::Direct3D11;
-		}
-		else if (cmdLine.hasArg("d3d12") )
-		{
-			m_type = bgfx::RendererType::Direct3D12;
-		}
+		m_type = bgfx::RendererType::Direct3D11;
+	}
+	else if (cmdLine.hasArg("d3d12") )
+	{
+		m_type = bgfx::RendererType::Direct3D12;
 	}
 	else if (BX_ENABLED(BX_PLATFORM_OSX) )
 	{

@@ -31,7 +31,8 @@ bool SimpleConditionalBranchToBranchReductionOpportunity::PreconditionHolds() {
 }
 
 void SimpleConditionalBranchToBranchReductionOpportunity::Apply() {
-  assert(conditional_branch_instruction_->opcode() == SpvOpBranchConditional &&
+  assert(conditional_branch_instruction_->opcode() ==
+             spv::Op::OpBranchConditional &&
          "SimpleConditionalBranchToBranchReductionOpportunity: branch was not "
          "a conditional branch");
 
@@ -46,11 +47,13 @@ void SimpleConditionalBranchToBranchReductionOpportunity::Apply() {
   // ->
   // OpBranch %block_id
 
-  conditional_branch_instruction_->SetOpcode(SpvOpBranch);
+  conditional_branch_instruction_->SetOpcode(spv::Op::OpBranch);
   conditional_branch_instruction_->ReplaceOperands(
       {{SPV_OPERAND_TYPE_ID,
         {conditional_branch_instruction_->GetSingleWordInOperand(
             kTrueBranchOperandIndex)}}});
+  conditional_branch_instruction_->context()->InvalidateAnalysesExceptFor(
+      opt::IRContext::kAnalysisNone);
 }
 
 }  // namespace reduce

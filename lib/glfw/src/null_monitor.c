@@ -1,5 +1,5 @@
 //========================================================================
-// GLFW 3.4 - www.glfw.org
+// GLFW 3.5 - www.glfw.org
 //------------------------------------------------------------------------
 // Copyright (c) 2016 Google Inc.
 // Copyright (c) 2016-2019 Camilla Löwy <elmindreda@glfw.org>
@@ -23,8 +23,6 @@
 // 3. This notice may not be removed or altered from any source
 //    distribution.
 //
-//========================================================================
-// It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
 #include "internal.h"
@@ -65,12 +63,12 @@ void _glfwPollMonitorsNull(void)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
+void _glfwFreeMonitorNull(_GLFWmonitor* monitor)
 {
     _glfwFreeGammaArrays(&monitor->null.ramp);
 }
 
-void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
+void _glfwGetMonitorPosNull(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
     if (xpos)
         *xpos = 0;
@@ -78,8 +76,8 @@ void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
         *ypos = 0;
 }
 
-void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
-                                         float* xscale, float* yscale)
+void _glfwGetMonitorContentScaleNull(_GLFWmonitor* monitor,
+                                     float* xscale, float* yscale)
 {
     if (xscale)
         *xscale = 1.f;
@@ -87,9 +85,9 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
         *yscale = 1.f;
 }
 
-void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor,
-                                     int* xpos, int* ypos,
-                                     int* width, int* height)
+void _glfwGetMonitorWorkareaNull(_GLFWmonitor* monitor,
+                                 int* xpos, int* ypos,
+                                 int* width, int* height)
 {
     const GLFWvidmode mode = getVideoMode();
 
@@ -103,32 +101,35 @@ void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor,
         *height = mode.height - 10;
 }
 
-GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
+GLFWvidmode* _glfwGetVideoModesNull(_GLFWmonitor* monitor, int* found)
 {
-    GLFWvidmode* mode = calloc(1, sizeof(GLFWvidmode));
+    GLFWvidmode* mode = _glfw_calloc(1, sizeof(GLFWvidmode));
     *mode = getVideoMode();
     *found = 1;
     return mode;
 }
 
-void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
+GLFWbool _glfwGetVideoModeNull(_GLFWmonitor* monitor, GLFWvidmode* mode)
 {
     *mode = getVideoMode();
+    return GLFW_TRUE;
 }
 
-GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+GLFWbool _glfwGetGammaRampNull(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
     if (!monitor->null.ramp.size)
     {
+        unsigned int i;
+
         _glfwAllocGammaArrays(&monitor->null.ramp, 256);
 
-        for (unsigned int i = 0;  i < monitor->null.ramp.size;  i++)
+        for (i = 0;  i < monitor->null.ramp.size;  i++)
         {
             const float gamma = 2.2f;
             float value;
             value = i / (float) (monitor->null.ramp.size - 1);
             value = powf(value, 1.f / gamma) * 65535.f + 0.5f;
-            value = _glfw_fminf(value, 65535.f);
+            value = fminf(value, 65535.f);
 
             monitor->null.ramp.red[i]   = (unsigned short) value;
             monitor->null.ramp.green[i] = (unsigned short) value;
@@ -143,7 +144,7 @@ GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
     return GLFW_TRUE;
 }
 
-void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
+void _glfwSetGammaRampNull(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
     if (monitor->null.ramp.size != ramp->size)
     {

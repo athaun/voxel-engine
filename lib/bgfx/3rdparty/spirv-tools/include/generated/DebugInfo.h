@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Khronos Group Inc.
+// Copyright (c) 2017-2024 The Khronos Group Inc.
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and/or associated documentation files (the "Materials"),
@@ -72,6 +72,7 @@ enum DebugInfoInstructions {
 
 
 enum DebugInfoDebugInfoFlags {
+    DebugInfoNone = 0x0000,
     DebugInfoFlagIsProtected = 0x01,
     DebugInfoFlagIsPrivate = 0x02,
     DebugInfoFlagIsPublic = 0x03,

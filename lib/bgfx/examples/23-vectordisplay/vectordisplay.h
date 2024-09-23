@@ -1,6 +1,6 @@
 /*
  * Copyright 2014 Kai Jourdan. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #ifndef __VECTORDISPLAY_H__
@@ -34,7 +34,7 @@ public:
 	{
 	}
 
-	void init(bool _originBottomLeft, float _texelHalf);
+	void init(bool _originBottomLeft);
 
 	void setup(uint16_t _width, uint16_t _height, uint8_t _view = 2);
 	void resize(uint16_t _width, uint16_t _height);
@@ -64,10 +64,10 @@ public:
 	// Set the number of frames of decay/fade to apply to the scene.
 	bool setDecaySteps(int _steps);
 
-	// Set the brightness multipler applied on each decay frame after the first.
+	// Set the brightness multiplier applied on each decay frame after the first.
 	bool setDecay(float _decay);
 
-	// Set the brightness multipler applied on the first decay frame.
+	// Set the brightness multiplier applied on the first decay frame.
 	bool setInitialDecay(float _initialDecay);
 
 	// Set a 2d transformation for the display.
@@ -110,7 +110,7 @@ public:
 	void getSize(float* _outWidth, float* _outHeight);
 
 protected:
-	void screenSpaceQuad(float _textureWidth, float _textureHeight, float _width = 1.0f, float _height = 1.0f);
+	void screenSpaceQuad(float _width = 1.0f, float _height = 1.0f);
 
 	struct PendingPoint
 	{

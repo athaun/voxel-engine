@@ -1,11 +1,11 @@
 /*
  * Copyright 2014 Stanlo Slasinski. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh"
 
-IMAGE2D_ARRAY_WR(s_texColor, rgba8, 0);
+IMAGE2D_ARRAY_WO(s_texColor, rgba8, 0);
 uniform vec4 u_time;
 
 NUM_THREADS(16, 16, 1)

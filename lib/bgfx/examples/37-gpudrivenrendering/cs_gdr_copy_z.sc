@@ -1,12 +1,12 @@
 /*
  * Copyright 2018 Kostas Anagnostou. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "bgfx_compute.sh"
 
 SAMPLER2D(s_texOcclusionDepth, 0);
-IMAGE2D_WR(s_texOcclusionDepthOut, r32f, 1);
+IMAGE2D_WO(s_texOcclusionDepthOut, r32f, 1);
 
 uniform vec4 u_inputRTSize;
 

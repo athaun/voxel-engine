@@ -1,12 +1,12 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
- * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #ifndef BGFX_CONFIG_H_HEADER_GUARD
 #define BGFX_CONFIG_H_HEADER_GUARD
 
-#include <bx/bx.h>
+#include <bx/bx.h> // bx::isPowerOf2
 
 // # Configuration options for bgfx.
 //
@@ -15,11 +15,11 @@
 //
 // When selecting rendering backends select all backends you want to include in the build.
 
-#ifndef BGFX_CONFIG_DEBUG
-#	define BGFX_CONFIG_DEBUG 0
-#endif // BGFX_CONFIG_DEBUG
+#ifndef BX_CONFIG_DEBUG
+#	error "BX_CONFIG_DEBUG must be defined in build script!"
+#endif // BX_CONFIG_DEBUG
 
-#if !defined(BGFX_CONFIG_RENDERER_DIRECT3D9)  \
+#if !defined(BGFX_CONFIG_RENDERER_AGC)        \
  && !defined(BGFX_CONFIG_RENDERER_DIRECT3D11) \
  && !defined(BGFX_CONFIG_RENDERER_DIRECT3D12) \
  && !defined(BGFX_CONFIG_RENDERER_GNM)        \
@@ -27,17 +27,17 @@
  && !defined(BGFX_CONFIG_RENDERER_NVN)        \
  && !defined(BGFX_CONFIG_RENDERER_OPENGL)     \
  && !defined(BGFX_CONFIG_RENDERER_OPENGLES)   \
- && !defined(BGFX_CONFIG_RENDERER_VULKAN)     \
- && !defined(BGFX_CONFIG_RENDERER_WEBGPU)
+ && !defined(BGFX_CONFIG_RENDERER_VULKAN)
 
-#	ifndef BGFX_CONFIG_RENDERER_DIRECT3D9
-#		define BGFX_CONFIG_RENDERER_DIRECT3D9 (0 \
-					|| BX_PLATFORM_WINDOWS       \
+#	ifndef BGFX_CONFIG_RENDERER_AGC
+#		define BGFX_CONFIG_RENDERER_AGC (0 \
+					|| BX_PLATFORM_PS5     \
 					? 1 : 0)
-#	endif // BGFX_CONFIG_RENDERER_DIRECT3D9
+#	endif // BGFX_CONFIG_RENDERER_AGC
 
 #	ifndef BGFX_CONFIG_RENDERER_DIRECT3D11
 #		define BGFX_CONFIG_RENDERER_DIRECT3D11 (0 \
+					|| BX_PLATFORM_LINUX          \
 					|| BX_PLATFORM_WINDOWS        \
 					|| BX_PLATFORM_WINRT          \
 					|| BX_PLATFORM_XBOXONE        \
@@ -46,6 +46,7 @@
 
 #	ifndef BGFX_CONFIG_RENDERER_DIRECT3D12
 #		define BGFX_CONFIG_RENDERER_DIRECT3D12 (0 \
+					|| BX_PLATFORM_LINUX          \
 					|| BX_PLATFORM_WINDOWS        \
 					|| BX_PLATFORM_WINRT          \
 					|| BX_PLATFORM_XBOXONE        \
@@ -59,10 +60,10 @@
 #	endif // BGFX_CONFIG_RENDERER_GNM
 
 #	ifndef BGFX_CONFIG_RENDERER_METAL
-#		define BGFX_CONFIG_RENDERER_METAL (0           \
-					|| (BX_PLATFORM_IOS && BX_CPU_ARM) \
-					|| (BX_PLATFORM_IOS && BX_CPU_X86) \
-					|| (BX_PLATFORM_OSX >= 101100)     \
+#		define BGFX_CONFIG_RENDERER_METAL (0 \
+					|| BX_PLATFORM_IOS       \
+					|| BX_PLATFORM_OSX       \
+					|| BX_PLATFORM_VISIONOS \
 					? 1 : 0)
 #	endif // BGFX_CONFIG_RENDERER_METAL
 
@@ -78,22 +79,21 @@
 
 #	ifndef BGFX_CONFIG_RENDERER_OPENGL
 #		define BGFX_CONFIG_RENDERER_OPENGL (0 \
-					|| BX_PLATFORM_BSD        \
 					|| BX_PLATFORM_LINUX      \
-					|| BX_PLATFORM_OSX        \
 					|| BX_PLATFORM_WINDOWS    \
 					? BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION : 0)
 #	endif // BGFX_CONFIG_RENDERER_OPENGL
 
 #	ifndef BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
-#		define BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION 1
+#		define BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION (0 \
+					|| BX_PLATFORM_ANDROID                  \
+					? 30 : 1)
 #	endif // BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
 
 #	ifndef BGFX_CONFIG_RENDERER_OPENGLES
 #		define BGFX_CONFIG_RENDERER_OPENGLES (0 \
 					|| BX_PLATFORM_ANDROID      \
 					|| BX_PLATFORM_EMSCRIPTEN   \
-					|| BX_PLATFORM_IOS          \
 					|| BX_PLATFORM_RPI          \
 					|| BX_PLATFORM_NX           \
 					? BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION : 0)
@@ -109,14 +109,10 @@
 					? 1 : 0)
 #	endif // BGFX_CONFIG_RENDERER_VULKAN
 
-#	ifndef BGFX_CONFIG_RENDERER_WEBGPU
-#		define BGFX_CONFIG_RENDERER_WEBGPU 0
-#	endif // BGFX_CONFIG_RENDERER_WEBGPU
-
 #else
-#	ifndef BGFX_CONFIG_RENDERER_DIRECT3D9
-#		define BGFX_CONFIG_RENDERER_DIRECT3D9 0
-#	endif // BGFX_CONFIG_RENDERER_DIRECT3D9
+#	ifndef BGFX_CONFIG_RENDERER_AGC
+#		define BGFX_CONFIG_RENDERER_AGC 0
+#	endif // BGFX_CONFIG_RENDERER_AGC
 
 #	ifndef BGFX_CONFIG_RENDERER_DIRECT3D11
 #		define BGFX_CONFIG_RENDERER_DIRECT3D11 0
@@ -149,10 +145,6 @@
 #	ifndef BGFX_CONFIG_RENDERER_VULKAN
 #		define BGFX_CONFIG_RENDERER_VULKAN 0
 #	endif // BGFX_CONFIG_RENDERER_VULKAN
-
-#	ifndef BGFX_CONFIG_RENDERER_WEBGPU
-#		define BGFX_CONFIG_RENDERER_WEBGPU 0
-#	endif // BGFX_CONFIG_RENDERER_VULKAN
 #endif // !defined...
 
 #if BGFX_CONFIG_RENDERER_OPENGL && BGFX_CONFIG_RENDERER_OPENGL < 21
@@ -174,10 +166,19 @@
 #	define BGFX_CONFIG_RENDERER_USE_EXTENSIONS 1
 #endif // BGFX_CONFIG_RENDERER_USE_EXTENSIONS
 
+#ifndef BGFX_CONFIG_RENDERER_DIRECT3D11_USE_STAGING_BUFFER
+#	define BGFX_CONFIG_RENDERER_DIRECT3D11_USE_STAGING_BUFFER 0
+#endif // BGFX_CONFIG_RENDERER_DIRECT3D11_USE_STAGING_BUFFER
+
 /// Enable use of tinystl.
 #ifndef BGFX_CONFIG_USE_TINYSTL
 #	define BGFX_CONFIG_USE_TINYSTL 1
 #endif // BGFX_CONFIG_USE_TINYSTL
+
+/// Debug text maximum scale factor.
+#ifndef BGFX_CONFIG_DEBUG_TEXT_MAX_SCALE
+#	define BGFX_CONFIG_DEBUG_TEXT_MAX_SCALE 4
+#endif // BGFX_CONFIG_DEBUG_TEXT_MAX_SCALE
 
 /// Enable nVidia PerfHUD integration.
 #ifndef BGFX_CONFIG_DEBUG_PERFHUD
@@ -323,6 +324,22 @@ BX_STATIC_ASSERT(bx::isPowerOf2(BGFX_CONFIG_MAX_VIEWS), "BGFX_CONFIG_MAX_VIEWS m
 #	define BGFX_CONFIG_TRANSIENT_INDEX_BUFFER_SIZE (2<<20)
 #endif // BGFX_CONFIG_TRANSIENT_INDEX_BUFFER_SIZE
 
+#ifndef BGFX_CONFIG_PER_FRAME_SCRATCH_STAGING_BUFFER_SIZE
+/// Amount of scratch buffer size (per in-flight frame) that will be reserved
+/// for staging data for copying to the device (such as vertex buffer data,
+/// texture data, etc). This buffer will be used instead of allocating memory
+/// on device separately for every data copy.
+/// Note: Currently only used by the Vulkan backend.
+#   define BGFX_CONFIG_PER_FRAME_SCRATCH_STAGING_BUFFER_SIZE (32<<20)
+#endif
+
+#ifndef BGFX_CONFIG_MAX_STAGING_SIZE_FOR_SCRATCH_BUFFER
+/// The threshold of data size above which the staging scratch buffer will
+/// not be used, but instead a separate device memory allocation will take
+/// place to stage the data for copying to device.
+#   define BGFX_CONFIG_MAX_STAGING_SIZE_FOR_SCRATCH_BUFFER (16 << 20)
+#endif
+
 #ifndef BGFX_CONFIG_MAX_INSTANCE_DATA_COUNT
 #	define BGFX_CONFIG_MAX_INSTANCE_DATA_COUNT 5
 #endif // BGFX_CONFIG_MAX_INSTANCE_DATA_COUNT
@@ -361,6 +378,10 @@ BX_STATIC_ASSERT(bx::isPowerOf2(BGFX_CONFIG_MAX_VIEWS), "BGFX_CONFIG_MAX_VIEWS m
 #	define BGFX_CONFIG_MAX_BACK_BUFFERS 4
 #endif // BGFX_CONFIG_MAX_BACK_BUFFERS
 
+#ifndef BGFX_CONFIG_MAX_FRAME_LATENCY
+#	define BGFX_CONFIG_MAX_FRAME_LATENCY 3
+#endif // BGFX_CONFIG_MAX_FRAME_LATENCY
+
 #ifndef BGFX_CONFIG_PREFER_DISCRETE_GPU
 // On laptops with integrated and discrete GPU, prefer selection of discrete GPU.
 // nVidia and AMD, on Windows only.
@@ -370,5 +391,9 @@ BX_STATIC_ASSERT(bx::isPowerOf2(BGFX_CONFIG_MAX_VIEWS), "BGFX_CONFIG_MAX_VIEWS m
 #ifndef BGFX_CONFIG_MAX_SCREENSHOTS
 #	define BGFX_CONFIG_MAX_SCREENSHOTS 4
 #endif // BGFX_CONFIG_MAX_SCREENSHOTS
+
+#ifndef BGFX_CONFIG_ENCODER_API_ONLY
+#	define BGFX_CONFIG_ENCODER_API_ONLY 0
+#endif // BGFX_CONFIG_ENCODER_API_ONLY
 
 #endif // BGFX_CONFIG_H_HEADER_GUARD

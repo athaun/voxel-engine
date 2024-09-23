@@ -1,10 +1,10 @@
-// This code is in the public domain -- Ignacio Castaño <castano@gmail.com>
+// This code is in the public domain -- Ignacio CastaÃ±o <castano@gmail.com>
 
 #ifndef NV_CORE_H
 #define NV_CORE_H
 
 #define NVCORE_SHARED 0
-#define NV_NO_ASSERT 0
+#define NV_NO_ASSERT 1
 
 // Function linkage
 #if NVCORE_SHARED
@@ -139,6 +139,10 @@
 #   define NV_CPU_ARM 1
 #elif defined POSH_CPU_AARCH64
 #   define NV_CPU_AARCH64 1
+#elif defined POSH_CPU_RISCV64
+#   define NV_CPU_RISCV64 1
+#elif defined POSH_CPU_LOONGARCH64
+#   define NV_CPU_LOONGARCH64 1
 #elif defined POSH_CPU_EMSCRIPTEN
 #   define NV_CPU_EMSCRIPTEN 1
 #else
@@ -164,6 +168,14 @@
 #ifndef NV_CPU_AARCH64
 #	define NV_CPU_AARCH64 0
 #endif // NV_CPU_AARCH64
+
+#ifndef NV_CPU_RISCV64
+#	define NV_CPU_RISCV64 0
+#endif // NV_CPU_RISCV64
+
+#ifndef NV_CPU_LOONGARCH64
+#	define NV_CPU_LOONGARCH64 0
+#endif // NV_CPU_LOONGARCH64
 
 #ifndef NV_CPU_EMSCRIPTEN
 #	define NV_CPU_EMSCRIPTEN 0
@@ -357,7 +369,7 @@ NV_COMPILER_CHECK(sizeof(uint32) == 4);
 #       include "defsgnuclinux.h"
 #   elif NV_OS_DARWIN || NV_OS_FREEBSD || NV_OS_OPENBSD
 #       include "defsgnucdarwin.h"
-#   elif NV_OS_MINGW
+#   elif NV_OS_MINGW || (NV_CC_CLANG && NV_OS_WIN32)
 #       include "defsgnucwin32.h"
 #   elif NV_OS_CYGWIN
 #       error "GCC: Cygwin not supported"
