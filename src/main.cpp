@@ -11,12 +11,13 @@
 #include "core/keyboard.h"
 #include "core/mouse.h"
 #include "noise/OpenSimplexNoise.h"
+#include <bgfx/bgfx.h>
+#include <bx/timer.h>
 
+// For Calculating DeltaTime
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
 
-// Create an instance of the noise generator
-OpenSimplexNoise::Noise noiseGen;
 
 // Camera position variables
 float cameraPosX = 0.0f;
@@ -31,8 +32,8 @@ float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
 
 // Define noise parameters
-int octaves = 7;   // Number of noise layers
-double persistence = 0.5;  // How much each octave contributes to the overall noise
+int octaves = 5;   // Number of noise layers
+double persistence = 0.3;  // How much each octave contributes to the overall noise
 double lacunarity = 2.0;   // How much the frequency increases per octave
 
 bool enterKeyPressedLastFrame = false; // Track the previous state of the ENTER key
@@ -72,21 +73,27 @@ bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
 float getTerrainHeight(int x, int z, int octaves, double persistence, double lacunarity) {
     double noiseValue = 0.0;
-    double amplitude = 1.0;
-    double frequency = 0.5;
+    double amplitude = 1.2;
+    double frequency = 0.4;
     double maxValue = 0.0;
 
     for (int i = 0; i < octaves; ++i) {
-        noiseValue += noiseGen.eval(x * 0.01 * frequency, z * 0.01* frequency) * amplitude;
+
+        // Create a new instance of the noise generator with a new seed
+        OpenSimplexNoise::Noise noiseGen(i); // Adjust the seed
+
+        // Calculate the noise value for the current octave
+        noiseValue += noiseGen.eval(x * 0.01 * frequency, z * 0.01 * frequency) * amplitude;
         maxValue += amplitude;
 
+        // Update amplitude and frequency for the next octave
         amplitude *= persistence;
         frequency *= lacunarity;
     }
 
-    noiseValue /= maxValue; // Normalize the noise value
-    return noiseValue * 200.0f; // Scale the height appropriately
+    return noiseValue * 200.0f; // Scale the height
 }
+
 
 int main(int argc, char** argv) {
 
@@ -94,7 +101,6 @@ int main(int argc, char** argv) {
 
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
-
 
     int grid_size = 500;
     float spacing = 2.0f;
@@ -140,7 +146,17 @@ int main(int argc, char** argv) {
     while (!Window::should_close()) {
         Window::begin_update();
 
-        {
+        {           
+            // Inside your rendering loop
+            bgfx::setDebug(BGFX_DEBUG_TEXT); // Only enable debug text
+            // Clear the debug text
+            bgfx::dbgTextClear(BGFX_DEBUG_TEXT);
+
+            // Display the FPS
+            bgfx::dbgTextPrintf(0, 0, 0x0f, "FPS: %.2f", NULL);
+            bgfx::dbgTextPrintf(0, 2, 0x0f, "Player Position: (%.2f, %.2f, %.2f)", cameraPosX, cameraPosY, cameraPosZ);
+
+
             // Calculate delta time
             steady_clock::time_point currentTime = steady_clock::now();
             duration<float> deltaTime = duration_cast<duration<float>>(currentTime - lastTime);
@@ -271,7 +287,7 @@ int main(int argc, char** argv) {
 
                 // Set up projection matrix
                 float proj[16];
-                bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+                bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
                 bgfx::setViewTransform(0, view, proj);
             }
         }
