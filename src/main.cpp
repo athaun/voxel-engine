@@ -103,21 +103,21 @@ int main(int argc, char** argv) {
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
     int grid_size = 500;
-    float spacing = 2.0f;
+    float spacing = 1.0f;
 
     int numCubes = grid_size * grid_size;
     int verticesPerCube = 8;  // Assuming each cube has 8 vertices
     int indicesPerCube = 36;  // Assuming each cube has 36 indices (12 triangles * 3 indices each)
     Render::Batch batch(numCubes * verticesPerCube, numCubes * indicesPerCube, "cubes");
 
-    Render::Mesh cube = Render::cube(1.0f);
+    Render::Mesh cube = Render::cube(0.5f);
     batch.push_mesh(cube);
 
     for (int x = 0; x < grid_size; ++x) {
         for (int z = 0; z < grid_size; ++z) {
             Render::Mesh c(cube);
-            float noiseValue = getTerrainHeight(x, z, octaves, persistence, lacunarity);
-            float y = noiseValue;
+            int noiseValue = getTerrainHeight(x, z, octaves, persistence, lacunarity);
+            int y = noiseValue;
             batch.push_mesh(Render::transform_mesh(c, x * spacing, y, z * spacing));
         }
     }
