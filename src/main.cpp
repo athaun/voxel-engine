@@ -13,6 +13,7 @@
 #include "noise/OpenSimplexNoise.h"
 #include <bgfx/bgfx.h>
 #include <bx/timer.h>
+#include "terrain/chunk.h"
 
 // For Calculating DeltaTime
 using namespace std::chrono;
@@ -31,10 +32,7 @@ float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
 float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
 
-// Define noise parameters
-int octaves = 5;   // Number of noise layers
-double persistence = 0.3;  // How much each octave contributes to the overall noise
-double lacunarity = 2.0;   // How much the frequency increases per octave
+
 
 bool enterKeyPressedLastFrame = false; // Track the previous state of the ENTER key
 bool isFlying = true; // Start in flying mode by default
@@ -71,29 +69,9 @@ Movement get_movement_direction() {
 bx::Vec3 forward(0.0f, 0.0f, 1.0f);
 bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
-float getTerrainHeight(int x, int z, int octaves, double persistence, double lacunarity) {
-    double noiseValue = 0.0;
-    double amplitude = 1.2;
-    double frequency = 0.4;
-    double maxValue = 0.0;
 
-    for (int i = 0; i < octaves; ++i) {
-
-        // Create a new instance of the noise generator with a new seed
-        OpenSimplexNoise::Noise noiseGen(i); // Adjust the seed
-
-        // Calculate the noise value for the current octave
-        noiseValue += noiseGen.eval(x * 0.01 * frequency, z * 0.01 * frequency) * amplitude;
-        maxValue += amplitude;
-
-        // Update amplitude and frequency for the next octave
-        amplitude *= persistence;
-        frequency *= lacunarity;
-    }
-
-    return noiseValue * 200.0f; // Scale the height
-}
-
+int spacing = 1.0f;
+int grid_size = 100;
 
 int main(int argc, char** argv) {
 
@@ -102,36 +80,10 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    int grid_size = 500;
-    float spacing = 1.0f;
-
-    int numCubes = grid_size * grid_size;
-    int verticesPerCube = 8;  // Assuming each cube has 8 vertices
-    int indicesPerCube = 36;  // Assuming each cube has 36 indices (12 triangles * 3 indices each)
-    Render::Batch batch(numCubes * verticesPerCube, numCubes * indicesPerCube, "cubes");
-
-    Render::Mesh cube = Render::cube(0.5f);
-    batch.push_mesh(cube);
-
-    for (int x = 0; x < grid_size; ++x) {
-        for (int z = 0; z < grid_size; ++z) {
-            Render::Mesh c(cube);
-            int noiseValue = getTerrainHeight(x, z, octaves, persistence, lacunarity);
-            int y = noiseValue;
-            batch.push_mesh(Render::transform_mesh(c, x * spacing, y, z * spacing));
-        }
-    }
-
-    // Render::Mesh triangle;
-    // triangle.vertices = {
-    //     { 0.0f,  2.0f, 0.0f, 0xff00ff00},
-    //     {-2.0f, -2.0f, 0.0f, 0xff0000ff},
-    //     { 2.0f, -2.0f, 0.0f, 0xffff0000},
-    // };
-    // triangle.vertexIndices = {
-    //     0, 1, 2,
-    // };
-    // batch.push_mesh(triangle);
+    Chunk chunk1(0, 0);
+    Chunk chunk2(1, 0);
+    Chunk chunk3(0, 1);
+    Chunk chunk4(1, 1);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -147,9 +99,7 @@ int main(int argc, char** argv) {
         Window::begin_update();
 
         {           
-            // Inside your rendering loop
-            bgfx::setDebug(BGFX_DEBUG_TEXT); // Only enable debug text
-            // Clear the debug text
+            bgfx::setDebug(BGFX_DEBUG_TEXT);
             bgfx::dbgTextClear(BGFX_DEBUG_TEXT);
 
             // Display the FPS
@@ -238,7 +188,7 @@ int main(int argc, char** argv) {
                     // Get the terrain height directly below the player
                     int gridX = static_cast<int>(cameraPosX / spacing);
                     int gridZ = static_cast<int>(cameraPosZ / spacing);
-                    float terrainHeight = getTerrainHeight(gridX, gridZ, octaves, persistence, lacunarity);
+                    float terrainHeight = 100; //getTerrainHeight(gridX, gridZ, octaves, persistence, lacunarity);
 
                     // Check if player is below terrain height
                     if (cameraPosY < terrainHeight + 5.0f) {
@@ -292,7 +242,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        batch.submit();
+        chunk1.submit_batch();
+        chunk2.submit_batch();
+        chunk3.submit_batch();
+        chunk4.submit_batch();
 
         Window::end_update();
     }

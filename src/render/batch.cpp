@@ -1,4 +1,5 @@
 #include "batch.h"
+#include "../core/Log.h"
 
 namespace Render {
 
@@ -13,6 +14,13 @@ Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *
     this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
 
     this->shader_program = load_shader(shader_name);
+}
+
+Batch::Batch() {
+    this->max_vertices = 0;
+    this->max_indices = 0;
+    this->used_vertices = 0;
+    this->used_indices = 0;
 }
 
 Batch::~Batch() {
