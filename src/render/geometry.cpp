@@ -22,14 +22,14 @@ namespace Render {
     Mesh cube(float size) {
         Mesh mesh;
         mesh.vertices = {
-            {-size,  size,  size, 0xff000000},
-            { size,  size,  size, 0xff0000ff},
-            {-size, -size,  size, 0xff00ff00},
-            { size, -size,  size, 0xff00ffff},
-            {-size,  size, -size, 0xffff0000},
-            { size,  size, -size, 0xffff00ff},
-            {-size, -size, -size, 0xffffff00},
-            { size, -size, -size, 0xffffffff},
+            {-size,  size,  size, 0xff000000, 0.0f, 0.0f},  // Add u, v for each vertex
+            { size,  size,  size, 0xff0000ff, 1.0f, 0.0f},
+            {-size, -size,  size, 0xff00ff00, 0.0f, 1.0f},
+            { size, -size,  size, 0xff00ffff, 1.0f, 1.0f},
+            {-size,  size, -size, 0xffff0000, 0.0f, 0.0f},
+            { size,  size, -size, 0xffff00ff, 1.0f, 0.0f},
+            {-size, -size, -size, 0xffffff00, 0.0f, 1.0f},
+            { size, -size, -size, 0xffffffff, 1.0f, 1.0f},
         };
         mesh.vertexIndices = {
             0, 1, 2,
