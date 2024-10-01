@@ -7,14 +7,12 @@ namespace Render {
 
 typedef struct Vertex {
     float x, y, z;  // Position
-    uint32_t color;
     float u, v;  // Texture coordinates
     static bgfx::VertexLayout init() {
         bgfx::VertexLayout layout;
         layout.begin()
             .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
             .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
             .end();
         bgfx::createVertexLayout(layout);
         return layout;

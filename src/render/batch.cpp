@@ -9,11 +9,15 @@ Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *
     this->used_vertices = 0;
     this->used_indices = 0;
 
-    // Create dynamic vertex and index buffers to store the batch data up to the max size
+    // Create dynamic vertex and index buffers to store the batch data
     this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
     this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
+
+    // Load texture (solid color or actual image)
     this->grassTexture = loadTexture("src/static/grass.jpg");
+    // Create the shader program and uniform only once
     this->shader_program = load_shader(shader_name);
+    this->s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
 }
 
 Batch::~Batch() {
@@ -21,14 +25,18 @@ Batch::~Batch() {
     bgfx::destroy(this->index_buffer);
     bgfx::destroy(this->shader_program);
     bgfx::destroy(this->grassTexture);
+    bgfx::destroy(this->s_texture);  // Don't forget to destroy the uniform
 }
 
 void Batch::submit() {
-    s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
     // Bind the texture before rendering
-    bgfx::setTexture(0, s_texture, grassTexture);
+    bgfx::setTexture(0, this->s_texture, this->grassTexture);
+
+    // Bind vertex and index buffers
     bgfx::setVertexBuffer(0, this->vertex_buffer);
     bgfx::setIndexBuffer(this->index_buffer);
+
+    // Submit the draw call
     bgfx::submit(0, this->shader_program);
 }
 

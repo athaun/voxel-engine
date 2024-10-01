@@ -41,29 +41,3 @@ bgfx::TextureHandle loadTexture(const char* filePath) {
     
 }
 
-bgfx::TextureHandle createSolidColorTexture(uint32_t color, int width = 16, int height = 16) {
-    // Create a buffer to hold the color data (RGBA format, 4 bytes per pixel)
-    std::vector<uint32_t> colorData(width * height, color);
-
-    // Copy the color data into bgfx's memory structure
-    const bgfx::Memory* mem = bgfx::copy(colorData.data(), width * height * sizeof(uint32_t));
-
-    // Create a 2D texture using the color data
-    bgfx::TextureHandle texture = bgfx::createTexture2D(
-        (uint16_t)width,
-        (uint16_t)height,
-        false, // No mipmaps
-        1,     // Number of layers
-        bgfx::TextureFormat::RGBA8, // 4 bytes per pixel (RGBA)
-        0,     // Texture flags
-        mem    // The actual texture data
-    );
-
-    if (!bgfx::isValid(texture)) {
-        std::cout << "Failed to create solid color texture." << std::endl;
-        return BGFX_INVALID_HANDLE;
-    }
-
-    return texture;
-}
-

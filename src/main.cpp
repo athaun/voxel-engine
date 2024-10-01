@@ -23,7 +23,7 @@ steady_clock::time_point lastTime = steady_clock::now();
 float cameraPosX = 0.0f;
 float cameraPosY = 0.0f;
 float cameraPosZ = -5.0f;
-float normalSpeed = 1.0f;
+float normalSpeed = 0.2f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
 
