@@ -21,7 +21,6 @@ typedef struct Vertex {
     }
 };
 
-
 typedef uint32_t Index;
 typedef std::vector<Vertex> VertexBuffer;
 typedef std::vector<Index> VertexBufferIndices;

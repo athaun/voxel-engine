@@ -22,7 +22,7 @@ namespace Render {
     Mesh cube(float size) {
         Mesh mesh;
         mesh.vertices = {
-            // Position                // Texture coordinates // Normal
+            // Position
             {-size,  size,  size, 1.0f, 1.0f,  0.0f,  0.0f,  1.0f},  // Front face
             { size,  size,  size, 0.0f, 1.0f,  0.0f,  0.0f,  1.0f},
             {-size, -size,  size, 1.0f, 0.0f,  0.0f,  0.0f,  1.0f},
