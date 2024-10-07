@@ -11,7 +11,7 @@ Chunk::Chunk(int x, int z) : global_x(x * CHUNK_WIDTH), global_z(z * CHUNK_DEPTH
 
     int used_volume = 0;
 
-    Render::Mesh cube = Render::cube(0.5f);
+    uint8_t used_faces = 0b00111111;
     float spacing = 1.0f;
 
     for (int x = 0; x < CHUNK_WIDTH; x++) {
@@ -20,18 +20,80 @@ Chunk::Chunk(int x, int z) : global_x(x * CHUNK_WIDTH), global_z(z * CHUNK_DEPTH
             int terrain_height = terrain(global_x + x, 0, global_z + z);
             used_volume += terrain_height;
 
-            for (int y = 0; y < CHUNK_HEIGHT && y < terrain_height; y++) {
-                voxels[x][z][y] = {voxel::Material::STONE};
-                Render::Mesh c(cube);
-                batch->push_mesh(Render::transform_mesh(c, global_x + x * spacing, y, global_z + z * spacing));
-            }
             for (int y = terrain_height; y < CHUNK_HEIGHT; y++) {
                 voxels[x][z][y] = {voxel::Material::AIR};
+            }
+            for (int y = 0; y < CHUNK_HEIGHT && y < terrain_height; y++) {
+                voxels[x][z][y] = {voxel::Material::STONE};
+                used_faces = get_visible_faces(x, y, z);
+                
+                Render::Mesh c = Render::cube(used_faces);
+
+                if (used_faces != 0) {
+                    batch->push_mesh(Render::transform_mesh(c, global_x + x * spacing, y, global_z + z * spacing));
+                }
             }
         }
     }
 
+    // Create a gizmo to visualize x, y, z directions
+    int gizmo_size = 10;
+    int gizmo_height = CHUNK_HEIGHT + 1; // Spawn above the chunk height
+
+    // X direction (red)
+    for (int i = 0; i < gizmo_size; ++i) {
+        batch->push_mesh(Render::transform_mesh(Render::colored_cube(0xFF0000FF), i, gizmo_height, 0)); // Red for X direction
+    }
+
+    // Y direction (blue)
+    for (int i = 0; i < gizmo_size; ++i) {
+        batch->push_mesh(Render::transform_mesh(Render::colored_cube(0x00FF0000), 0, gizmo_height + i, 0)); // Blue for Y direction
+    }
+
+    // Z direction (green)
+    for (int i = 0; i < gizmo_size; ++i) {
+        batch->push_mesh(Render::transform_mesh(Render::colored_cube(0xFF00FF00), 0, gizmo_height, i)); // Green for Z direction
+    }
+
     Log::info("Created chunk at (" + std::to_string(x) + ", " + std::to_string(z) + ")" + " of volume " + std::to_string(used_volume));
+}
+
+bool neighbor = false;
+bool Chunk::is_empty(int x, int y, int z) {
+    if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_DEPTH) {
+        return true;
+    }
+    if (voxels[x][z][y].material == voxel::Material::AIR) {
+        Log::info("Neighbor at\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ") is empty");
+        neighbor = true;
+    }
+    return voxels[x][z][y].material == voxel::Material::AIR;
+}
+
+uint8_t Chunk::get_visible_faces(int x, int y, int z) {
+    uint8_t used_faces = 0b00111110;
+
+    if (is_empty(x, y, z + 1)) used_faces |= (1 << 0); // front (Displayed from Z-)
+    // if (is_empty(x, y, z - 1)) used_faces |= (1 << 1); // back (Displayed from Z+ when looking towards origin)
+
+    // if (is_empty(x - 1, y, z)) used_faces |= (1 << 2); // left (Displayed from X+)
+    // if (is_empty(x + 1, y, z)) used_faces |= (1 << 3); // right (Displayed from X-)
+
+    // if (is_empty(x, y + 1, z)) used_faces |= (1 << 4); // Bottom (Displayed from Y-)
+    // if (is_empty(x, y - 1, z)) used_faces |= (1 << 5); // Top (Displayed from Y+)
+
+    if (neighbor) {
+        Log::info("Faces at\t\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "): " +
+              "\n0 : From Z- : Front:\t" + std::to_string((used_faces & (1 << 0)) != 0) + ", " +
+              "\n1 : From Z+ : Back:\t" + std::to_string((used_faces & (1 << 1)) != 0) + ", " +
+              "\n2 : From X+ : Left:\t" + std::to_string((used_faces & (1 << 2)) != 0) + ", " +
+              "\n3 : From X- : Right:\t" + std::to_string((used_faces & (1 << 3)) != 0) + ", " +
+              "\n4 : From Y- : Bottom:\t" + std::to_string((used_faces & (1 << 4)) != 0) + ", " +
+              "\n5 : From Y+ : Top:\t" + std::to_string((used_faces & (1 << 5)) != 0) + "\n");
+        neighbor = false;
+    }
+
+    return used_faces;
 }
 
 template <typename T>
@@ -43,7 +105,7 @@ double Chunk::terrain(int x, int y, int z) {
     // Define noise parameters
     int octaves = 5;   // Number of noise layers
     double persistence = 0.3;  // How much each octave contributes to the overall noise
-    double lacunarity = 2.0;   // How much the frequency increases per octave
+    double lacunarity = 10.0;   // How much the frequency increases per octave
 
     double noiseValue = 0.0;
     double amplitude = 1.2;

@@ -81,9 +81,9 @@ int main(int argc, char** argv) {
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
     Chunk chunk1(0, 0);
-    Chunk chunk2(1, 0);
-    Chunk chunk3(0, 1);
-    Chunk chunk4(1, 1);
+    // Chunk chunk2(1, 0);
+    // Chunk chunk3(0, 1);
+    // Chunk chunk4(1, 1);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -243,9 +243,9 @@ int main(int argc, char** argv) {
         }
 
         chunk1.submit_batch();
-        chunk2.submit_batch();
-        chunk3.submit_batch();
-        chunk4.submit_batch();
+        // chunk2.submit_batch();
+        // chunk3.submit_batch();
+        // chunk4.submit_batch();
 
         Window::end_update();
     }

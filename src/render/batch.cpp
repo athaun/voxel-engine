@@ -36,20 +36,20 @@ void Batch::submit() {
 }
 
 bool Batch::push_mesh (Mesh mesh) {
-    if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertexIndices.size() > max_indices)) {
+    if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertex_indices.size() > max_indices)) {
         return false;
     }
     
     // Adjust indices to account for the existing vertices in the buffer
-    for (size_t i = 0; i < mesh.vertexIndices.size(); ++i) {
-        mesh.vertexIndices[i] += used_vertices; // Offset by the number of used vertices
+    for (size_t i = 0; i < mesh.vertex_indices.size(); ++i) {
+        mesh.vertex_indices[i] += used_vertices; // Offset by the number of used vertices
     }
 
     bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
-    bgfx::update(this->index_buffer, used_indices, bgfx::copy(mesh.vertexIndices.data(), sizeof(Index) * mesh.vertexIndices.size()));
+    bgfx::update(this->index_buffer, used_indices, bgfx::copy(mesh.vertex_indices.data(), sizeof(Index) * mesh.vertex_indices.size()));
 
     used_vertices += mesh.vertices.size();
-    used_indices += mesh.vertexIndices.size();
+    used_indices += mesh.vertex_indices.size();
 
     return true;
 }
