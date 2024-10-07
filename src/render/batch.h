@@ -19,6 +19,9 @@ class Batch {
     unsigned long used_indices;
 
     bgfx::UniformHandle s_texture;
+    
+    bgfx::UniformHandle u_ambientColor;
+    bgfx::UniformHandle u_lightDirection;
 
     bgfx::DynamicVertexBufferHandle vertex_buffer;
     bgfx::DynamicIndexBufferHandle index_buffer;
@@ -38,6 +41,8 @@ class Batch {
     bool push_mesh (Mesh mesh);
 
     bool push_triangle(Vertex v1, Vertex v2, Vertex v3);
+
+    void updateLighting(float deltaTime);
    
    private:
     const bgfx::ProgramHandle load_shader(const char *shader_name);

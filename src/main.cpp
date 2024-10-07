@@ -14,6 +14,7 @@
 #include <bgfx/bgfx.h>
 #include <bx/timer.h>
 
+
 // For Calculating DeltaTime
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
@@ -93,6 +94,7 @@ float getTerrainHeight(int x, int z, int octaves, double persistence, double lac
 
     return noiseValue * 200.0f; // Scale the height
 }
+
 
 
 int main(int argc, char** argv) {

@@ -18,6 +18,8 @@ Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *
     // Create the shader program and uniform only once
     this->shader_program = load_shader(shader_name);
     this->s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
+    this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
+    this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
 }
 
 Batch::~Batch() {
@@ -26,11 +28,20 @@ Batch::~Batch() {
     bgfx::destroy(this->shader_program);
     bgfx::destroy(this->grassTexture);
     bgfx::destroy(this->s_texture);  // Don't forget to destroy the uniform
+    bgfx::destroy(this->u_ambientColor);
 }
 
 void Batch::submit() {
     // Bind the texture before rendering
     bgfx::setTexture(0, this->s_texture, this->grassTexture);
+    
+    // Set the ambient color
+    float ambientColor[3] = { 1, 1, 1 }; // Low intensity gray
+    bgfx::setUniform(u_ambientColor, ambientColor);
+
+    // Set the light direction
+    float lightDirection[3] = { -1.0f, -1.0f, 1.0f }; // Direction vector for sun
+    bgfx::setUniform(u_lightDirection, lightDirection);
 
     // Bind vertex and index buffers
     bgfx::setVertexBuffer(0, this->vertex_buffer);
