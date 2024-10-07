@@ -73,10 +73,6 @@ namespace Render {
             switch (i) {
                 case 0: // Front
                     mesh.vertex_indices.insert(mesh.vertex_indices.end(), {0, 1, 2, 1, 3, 2});
-                    // mesh.vertices[0].color = 0xFF00FF00;
-                    // mesh.vertices[1].color = 0xFF00FF01;
-                    // mesh.vertices[2].color = 0xFF00FF02;
-                    // mesh.vertices[3].color = 0xFF00FF03;
                     break;
                 case 1: // Back
                     mesh.vertex_indices.insert(mesh.vertex_indices.end(), {4, 6, 5, 5, 6, 7});
