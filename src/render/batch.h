@@ -1,6 +1,6 @@
 #pragma once
-
 #include <bgfx/bgfx.h>
+#include <bx/math.h>
 
 #include <cstring>
 #include <filesystem>
@@ -41,6 +41,8 @@ class Batch {
     bool push_mesh (Mesh mesh);
 
     bool push_triangle(Vertex v1, Vertex v2, Vertex v3);
+
+    void setLightDirection(const bx::Vec3& direction);
    
    private:
     const bgfx::ProgramHandle load_shader(const char *shader_name);

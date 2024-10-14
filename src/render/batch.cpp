@@ -26,8 +26,9 @@ namespace Render {
         bgfx::destroy(this->index_buffer);
         bgfx::destroy(this->shader_program);
         bgfx::destroy(this->grassTexture);
-        bgfx::destroy(this->s_texture);  // Don't forget to destroy the uniform
+        bgfx::destroy(this->s_texture);
         bgfx::destroy(this->u_ambientColor);
+        bgfx::destroy(this->u_lightDirection);
     }
 
     void Batch::submit() {
@@ -37,10 +38,6 @@ namespace Render {
         // Set the ambient color
         float ambientColor[3] = { 1, 1, 1 }; // Low intensity gray
         bgfx::setUniform(u_ambientColor, ambientColor);
-
-        // Set the light direction
-        float lightDirection[3] = { -1.0f, -1.0f, 1.0f }; // Direction vector for sun
-        bgfx::setUniform(u_lightDirection, lightDirection);
 
         // Bind vertex and index buffers
         bgfx::setVertexBuffer(0, this->vertex_buffer);
@@ -143,5 +140,9 @@ namespace Render {
         }
 
         return bgfx::createProgram(vertex_shader, fragment_shader, false);
+    }
+
+    void Batch::setLightDirection(const bx::Vec3& direction) {
+        bgfx::setUniform(u_lightDirection, &direction);  // Set the uniform value
     }
 }  // namespace Render

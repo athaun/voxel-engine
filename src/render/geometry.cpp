@@ -22,16 +22,17 @@ namespace Render {
     Mesh cube(float size) {
         Mesh mesh;
         mesh.vertices = {
-            // Position
-            {-size,  size,  size, 1.0f, 1.0f,  0.0f,  0.0f,  1.0f},  // Front face
-            { size,  size,  size, 0.0f, 1.0f,  0.0f,  0.0f,  1.0f},
-            {-size, -size,  size, 1.0f, 0.0f,  0.0f,  0.0f,  1.0f},
-            { size, -size,  size, 0.0f, 0.0f,  0.0f,  0.0f,  1.0f},
-            {-size,  size, -size, 0.0f, 0.0f,  0.0f,  0.0f, -1.0f},  // Back face
-            { size,  size, -size, 1.0f, 0.0f,  0.0f,  0.0f, -1.0f},
-            {-size, -size, -size, 0.0f, 1.0f,  0.0f,  0.0f, -1.0f},
-            { size, -size, -size, 1.0f, 1.0f,  0.0f,  0.0f, -1.0f},
+            // Position              // Texture UVs    // Smoothed Normals
+            {-size,  size,  size,     1.0f, 1.0f,      -1.0f, -1.0f,  1.0f}, // Corner with three faces (top-left-front)
+            { size,  size,  size,     0.0f, 1.0f,       1.0f, -1.0f,  1.0f}, // Top-right-front
+            {-size, -size,  size,     1.0f, 0.0f,      -1.0f, 1.0f,  1.0f}, // Bottom-left-front
+            { size, -size,  size,     0.0f, 0.0f,       1.0f, 1.0f,  1.0f}, // Bottom-right-front
+            {-size,  size, -size,     0.0f, 0.0f,      -1.0f, -1.0f, -1.0f}, // Top-left-back
+            { size,  size, -size,     1.0f, 0.0f,       1.0f, -1.0f, -1.0f}, // Top-right-back
+            {-size, -size, -size,     0.0f, 1.0f,      -1.0f, 1.0f, -1.0f}, // Bottom-left-back
+            { size, -size, -size,     1.0f, 1.0f,       1.0f, 1.0f, -1.0f}, // Bottom-right-back
         };
+        // Indices unchanged
         mesh.vertexIndices = {
             0, 1, 2, 1, 3, 2,  // Front face
             4, 6, 5, 5, 6, 7,  // Back face

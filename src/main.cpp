@@ -45,6 +45,12 @@ float verticalVelocity = 0.0f; // The player's current vertical velocity
 const float gravity = -15.0f; // Gravity acceleration (you can tweak this value)
 const float jumpStrength = 10.0f; // How high the player can jump
 
+// Light direction variables
+float angle = 0.0f; // Initialize angle for orbiting
+float orbitSpeed = 0.005f; // Adjust this to control the speed of the orbit
+float orbitRadius = 5.0f; // Radius of the orbit above and below the voxel plane
+bx::Vec3 lightDirection(0.0f, -1.0f, 1.0f);
+
 ////////////////////////
 // Define a struct for movement direction
 struct Movement {
@@ -104,7 +110,7 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    int grid_size = 500;
+    int grid_size = 50;
     float spacing = 1.0f;
 
     int numCubes = grid_size * grid_size;
@@ -291,9 +297,18 @@ int main(int argc, char** argv) {
                 float proj[16];
                 bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
                 bgfx::setViewTransform(0, view, proj);
+
+                // Update light direction to create an orbiting effect
+                angle += orbitSpeed; // Increment angle
+                float lightX = 0.0f; // Calculate X position
+                float lightY = orbitRadius * cos(angle); // Calculate Y position
+                float lightZ = orbitRadius * sin(angle); // Calculate Z position
+            
+
+                bx::Vec3 lightDirection(lightX, lightY, lightZ); // Create the new light direction vector
+                batch.setLightDirection(lightDirection);
             }
         }
-
         batch.submit();
 
         Window::end_update();
