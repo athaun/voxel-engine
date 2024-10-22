@@ -20,25 +20,43 @@ namespace Render {
         return mesh;
     }
 
-    std::vector<Vertex> cube_vertices = {
-        {-0.5,  0.5,  0.5, 0xff000000},
-        { 0.5,  0.5,  0.5, 0xff0000ff},
-        {-0.5, -0.5,  0.5, 0xff00ff00},
-        { 0.5, -0.5,  0.5, 0xff00ffff},
-        {-0.5,  0.5, -0.5, 0xffff0000},
-        { 0.5,  0.5, -0.5, 0xffff00ff},
-        {-0.5, -0.5, -0.5, 0xffffff00},
-        { 0.5, -0.5, -0.5, 0xffffffff},
+    // 0, 1, 2, 2, 3, 0, // 0 Front  (Z+)
+    // 4, 6, 5, 5, 6, 7, // 1 Back   (Z-)
+    // 0, 2, 4, 4, 2, 6, // 2 Left   (X-)
+    // 1, 5, 3, 5, 7, 3, // 3 Right  (X+)
+    // 0, 4, 1, 4, 5, 1, // 4 Top    (Y+)
+    // 2, 3, 6, 6, 3, 7, // 5 Bottom (Y-)
+
+    // The 8 vertices will look like this:
+    //   v4 ----------- v5
+    //   /|            /|      Axis orientation
+    //  / |           / |
+    // v0 --------- v1  |      y
+    // |  |         |   |      |
+    // |  v6 -------|-- v7     +--- x
+    // | /          |  /      /
+    // |/           | /      z
+    // v2 --------- v3
+    std::vector<Index> cube_indices = {
+        0, 1, 2,    1, 3, 2,    // Front face  *
+        5, 7, 3,    1, 5, 3,    // Right face  *
+        7, 5, 4,    6, 7, 4,    // Back face
+        4, 0, 6,    0, 2, 6,    // Left face
+        5, 0, 4,    0, 5, 1,    // Top face 
+        2, 3, 6,    6, 3, 7     // Bottom face
     };
 
-    std::vector<Index> cube_indices = {
-        0, 1, 2, 1, 3, 2, // 0 Front  (Z+)
-        4, 6, 5, 5, 6, 7, // 1 Back   (Z-)
-        0, 2, 4, 4, 2, 6, // 2 Left   (X-)
-        1, 5, 3, 5, 7, 3, // 3 Right  (X+)
-        0, 4, 1, 4, 5, 1, // 4 Top    (Y+)
-        2, 3, 6, 6, 3, 7, // 5 Bottom (Y-)
+    std::vector<Vertex> cube_vertices = {
+        {-0.5,  0.5,  0.5, 0xff000000}, // 0
+        { 0.5,  0.5,  0.5, 0xff0000ff}, // 1
+        {-0.5, -0.5,  0.5, 0xff00ff00}, // 2
+        { 0.5, -0.5,  0.5, 0xff00ffff}, // 3
+        {-0.5,  0.5, -0.5, 0xffff0000}, // 4
+        { 0.5,  0.5, -0.5, 0xffff00ff}, // 5
+        {-0.5, -0.5, -0.5, 0xffffff00}, // 6
+        { 0.5, -0.5, -0.5, 0xffffffff}, // 7
     };
+
 
     Mesh cube() {
         Mesh mesh;
@@ -49,16 +67,10 @@ namespace Render {
 
     Mesh colored_cube(uint32_t color) {
         Mesh mesh;
-        mesh.vertices = {
-            {-0.5,  0.5,  0.5, color},
-            { 0.5,  0.5,  0.5, color},
-            {-0.5, -0.5,  0.5, color},
-            { 0.5, -0.5,  0.5, color},
-            {-0.5,  0.5, -0.5, color},
-            { 0.5,  0.5, -0.5, color},
-            {-0.5, -0.5, -0.5, color},
-            { 0.5, -0.5, -0.5, color},
-        };
+        mesh.vertices = cube_vertices;
+        for (auto& vertex : mesh.vertices) {
+            vertex.color = color;
+        }
         mesh.vertex_indices = cube_indices;
         return mesh;
     }
@@ -71,23 +83,23 @@ namespace Render {
             if (!(used_faces & (1 << i))) continue;
 
             switch (i) {
-                case 0: // Front
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {0, 1, 2, 1, 3, 2});
+                case 0: // Front face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin(), cube_indices.begin() + 6);
                     break;
-                case 1: // Back
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {4, 6, 5, 5, 6, 7});
+                case 1: // Right face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 6, cube_indices.begin() + 12);
                     break;
-                case 2: // Left
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {0, 2, 4, 4, 2, 6});
+                case 2: // Back face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 12, cube_indices.begin() + 18);
                     break;
-                case 3: // Right
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {1, 5, 3, 5, 7, 3});
+                case 3: // Left face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 18, cube_indices.begin() + 24);
                     break;
-                case 4: // Bottom
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {0, 4, 1, 4, 5, 1});
+                case 4: // Top face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 24, cube_indices.begin() + 30);
                     break;
-                case 5: // Top
-                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), {2, 3, 6, 6, 3, 7});
+                case 5: // Bottom face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 30, cube_indices.end());
                     break;
             }
         }

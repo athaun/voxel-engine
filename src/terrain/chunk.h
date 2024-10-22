@@ -6,9 +6,9 @@
 #include "../render/batch.h"
 #include "voxel.h"
 
-const int CHUNK_WIDTH = 32;
-const int CHUNK_DEPTH = 32;
-const int CHUNK_HEIGHT = 32;
+const int CHUNK_WIDTH = 10;
+const int CHUNK_DEPTH = 10;
+const int CHUNK_HEIGHT = 10;
 
 class Chunk {
 public:

@@ -21,14 +21,14 @@ steady_clock::time_point lastTime = steady_clock::now();
 
 
 // Camera position variables
-float cameraPosX = 0.0f;
-float cameraPosY = 0.0f;
+float cameraPosX = 0.5f;
+float cameraPosY = 0.5f;
 float cameraPosZ = -5.0f;
-float normalSpeed = 1.0f;
+float normalSpeed = 0.1f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
 
-float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
+float cameraYaw = 176.0f;   // Rotation around the Y axis (horizontal)
 float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
 
@@ -105,7 +105,8 @@ int main(int argc, char** argv) {
             // Display the FPS
             bgfx::dbgTextPrintf(0, 0, 0x0f, "FPS: %.2f", NULL);
             bgfx::dbgTextPrintf(0, 2, 0x0f, "Player Position: (%.2f, %.2f, %.2f)", cameraPosX, cameraPosY, cameraPosZ);
-
+            bgfx::dbgTextPrintf(0, 4, 0x0f, "Player Rotation: (%.2f, %.2f)", cameraYaw, cameraPitch);
+            
 
             // Calculate delta time
             steady_clock::time_point currentTime = steady_clock::now();

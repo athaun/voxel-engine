@@ -84,6 +84,8 @@ namespace Window {
     void begin_update() {
         glfwPollEvents();
 
+        // bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_PT_LINES);
+
 		// int oldWidth = width, oldHeight = height;
 		// glfwGetWindowSize(window, &Window::width, &Window::height);
 		// if (width != oldWidth || height != oldHeight) {

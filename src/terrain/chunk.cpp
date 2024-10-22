@@ -11,20 +11,25 @@ Chunk::Chunk(int x, int z) : global_x(x * CHUNK_WIDTH), global_z(z * CHUNK_DEPTH
 
     int used_volume = 0;
 
-    uint8_t used_faces = 0b00111111;
+    uint8_t used_faces = 0b00000000;
     float spacing = 1.0f;
+
+    int terrain_heights[CHUNK_WIDTH][CHUNK_DEPTH] = {};
 
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
-
             int terrain_height = terrain(global_x + x, 0, global_z + z);
-            used_volume += terrain_height;
-
-            for (int y = terrain_height; y < CHUNK_HEIGHT; y++) {
-                voxels[x][z][y] = {voxel::Material::AIR};
+            for (int y = 0; y < CHUNK_HEIGHT; y++) {
+                voxels[x][z][y].material = (terrain_height > y ? voxel::Material::STONE : voxel::Material::AIR);
             }
-            for (int y = 0; y < CHUNK_HEIGHT && y < terrain_height; y++) {
-                voxels[x][z][y] = {voxel::Material::STONE};
+            used_volume += terrain_height;
+            terrain_heights[x][z] = terrain_height;
+        }
+    } 
+
+    for (int x = 0; x < CHUNK_WIDTH; x++) {
+        for (int z = 0; z < CHUNK_DEPTH; z++) {
+            for (int y = 0; y < CHUNK_HEIGHT && y < terrain_heights[x][z]; y++) {
                 used_faces = get_visible_faces(x, y, z);
                 
                 Render::Mesh c = Render::cube(used_faces);
@@ -63,33 +68,42 @@ bool Chunk::is_empty(int x, int y, int z) {
     if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_DEPTH) {
         return true;
     }
-    if (voxels[x][z][y].material == voxel::Material::AIR) {
-        Log::info("Neighbor at\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ") is empty");
-        neighbor = true;
-    }
     return voxels[x][z][y].material == voxel::Material::AIR;
 }
 
 uint8_t Chunk::get_visible_faces(int x, int y, int z) {
-    uint8_t used_faces = 0b00111110;
+    uint8_t used_faces = 0b00000000;
 
-    if (is_empty(x, y, z + 1)) used_faces |= (1 << 0); // front (Displayed from Z-)
-    // if (is_empty(x, y, z - 1)) used_faces |= (1 << 1); // back (Displayed from Z+ when looking towards origin)
+    if (is_empty(x, y, z + 1)) {
+        used_faces |= (1 << 0); // Front face
+        if (z != CHUNK_DEPTH - 1) {
+            Log::info("Front face neighbor at\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z + 1) + ") is empty");
+            neighbor = true;
+        }
+    }
 
-    // if (is_empty(x - 1, y, z)) used_faces |= (1 << 2); // left (Displayed from X+)
-    // if (is_empty(x + 1, y, z)) used_faces |= (1 << 3); // right (Displayed from X-)
-
-    // if (is_empty(x, y + 1, z)) used_faces |= (1 << 4); // Bottom (Displayed from Y-)
-    // if (is_empty(x, y - 1, z)) used_faces |= (1 << 5); // Top (Displayed from Y+)
+    if (is_empty(x + 1, y, z)) used_faces |= (1 << 1); // Right face
+    
+    if (is_empty(x, y, z - 1)) {
+        used_faces |= (1 << 2); // Back face
+        // if (z != 0) {
+        //     Log::info("Back face neighbor at\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z - 1) + ") is empty");
+        //     neighbor = true;
+        // }
+    }
+    
+    if (is_empty(x - 1, y, z)) used_faces |= (1 << 3); // Left face
+    if (is_empty(x, y + 1, z)) used_faces |= (1 << 4); // Top face
+    if (is_empty(x, y - 1, z)) used_faces |= (1 << 5); // Bottom face
 
     if (neighbor) {
-        Log::info("Faces at\t\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "): " +
-              "\n0 : From Z- : Front:\t" + std::to_string((used_faces & (1 << 0)) != 0) + ", " +
-              "\n1 : From Z+ : Back:\t" + std::to_string((used_faces & (1 << 1)) != 0) + ", " +
-              "\n2 : From X+ : Left:\t" + std::to_string((used_faces & (1 << 2)) != 0) + ", " +
-              "\n3 : From X- : Right:\t" + std::to_string((used_faces & (1 << 3)) != 0) + ", " +
-              "\n4 : From Y- : Bottom:\t" + std::to_string((used_faces & (1 << 4)) != 0) + ", " +
-              "\n5 : From Y+ : Top:\t" + std::to_string((used_faces & (1 << 5)) != 0) + "\n");
+        Log::info("Faces at\t\t\t(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "): " +
+              "\n0 : Front (Z+):\t" + std::to_string((used_faces & (1 << 0)) != 0) + ", " +
+              "\n1 : Right (X+):\t" + std::to_string((used_faces & (1 << 1)) != 0) + ", " +
+              "\n2 : Back (Z-):\t" + std::to_string((used_faces & (1 << 2)) != 0) + ", " +
+              "\n3 : Left (X-):\t" + std::to_string((used_faces & (1 << 3)) != 0) + ", " +
+              "\n4 : Top (Y+):\t" + std::to_string((used_faces & (1 << 4)) != 0) + ", " +
+              "\n5 : Bot (Y-):\t" + std::to_string((used_faces & (1 << 5)) != 0) + "\n");
         neighbor = false;
     }
 
@@ -109,7 +123,7 @@ double Chunk::terrain(int x, int y, int z) {
 
     double noiseValue = 0.0;
     double amplitude = 1.2;
-    double frequency = 0.4;
+    double frequency = 0.9;
     double maxValue = 0.0;
 
     for (int i = 0; i < octaves; ++i) {
