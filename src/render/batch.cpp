@@ -36,7 +36,7 @@ namespace Render {
         bgfx::setTexture(0, this->s_texture, this->grassTexture);
         
         // Set the ambient color
-        float ambientColor[3] = { 1, 1, 1 }; // Low intensity gray
+        float ambientColor[4] = { 0.5f, 0.5f, 0.5f, 1.0f }; // Low intensity gray
         bgfx::setUniform(u_ambientColor, ambientColor);
 
         // Bind vertex and index buffers

@@ -16,7 +16,7 @@ void main() {
 
     // Calculate diffuse lighting
     // Normalize the light direction and calculate dot product
-    float diff = max(dot(normalize(v_normal), normalize(u_lightDirection)), 0.0);
+    float diff = max(dot(normalize(v_normal), normalize(u_lightDirection)), 0);
     vec3 diffuse = diff * texColor.rgb; // Scale by texture color
 
     // Combine ambient and diffuse lighting

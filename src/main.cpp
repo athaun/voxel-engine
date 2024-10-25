@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    int grid_size = 50;
+    int grid_size = 100;
     float spacing = 1.0f;
 
     int numCubes = grid_size * grid_size;
