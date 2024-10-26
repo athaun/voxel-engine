@@ -20,13 +20,6 @@ namespace Render {
         return mesh;
     }
 
-    // 0, 1, 2, 2, 3, 0, // 0 Front  (Z+)
-    // 4, 6, 5, 5, 6, 7, // 1 Back   (Z-)
-    // 0, 2, 4, 4, 2, 6, // 2 Left   (X-)
-    // 1, 5, 3, 5, 7, 3, // 3 Right  (X+)
-    // 0, 4, 1, 4, 5, 1, // 4 Top    (Y+)
-    // 2, 3, 6, 6, 3, 7, // 5 Bottom (Y-)
-
     // The 8 vertices will look like this:
     //   v4 ----------- v5
     //   /|            /|      Axis orientation
@@ -43,7 +36,7 @@ namespace Render {
         7, 5, 4,    6, 7, 4,    // Back face
         4, 0, 6,    0, 2, 6,    // Left face
         5, 0, 4,    0, 5, 1,    // Top face 
-        2, 3, 6,    6, 3, 7     // Bottom face
+        2, 3, 6,    6, 3, 7     // Bottom faceit 
     };
 
     std::vector<Vertex> cube_vertices = {

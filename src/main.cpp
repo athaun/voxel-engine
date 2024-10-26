@@ -14,6 +14,7 @@
 #include <bgfx/bgfx.h>
 #include <bx/timer.h>
 #include "terrain/chunk.h"
+#include "terrain/chunk_manager.h"
 
 // For Calculating DeltaTime
 using namespace std::chrono;
@@ -21,9 +22,9 @@ steady_clock::time_point lastTime = steady_clock::now();
 
 
 // Camera position variables
-float cameraPosX = 0.5f;
-float cameraPosY = 0.5f;
-float cameraPosZ = -5.0f;
+float cameraPosX = 0.0f;
+float cameraPosY = 20.5f;
+float cameraPosZ = 0.0f;
 float normalSpeed = 0.1f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
@@ -80,10 +81,8 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    Chunk chunk1(0, 0);
-    // Chunk chunk2(1, 0);
-    // Chunk chunk3(0, 1);
-    // Chunk chunk4(1, 1);
+    // Initialize the chunk manager
+    ChunkManager::init();
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -95,6 +94,7 @@ int main(int argc, char** argv) {
     // Recommended to be less than 90 or the camera will invert/flip
     const float maxPitch = 89.0f * (3.14159f / 180.0f);  // Convert degrees to radians
 
+    bool topDownView = true;
     while (!Window::should_close()) {
         Window::begin_update();
 
@@ -113,7 +113,6 @@ int main(int argc, char** argv) {
             duration<float> deltaTime = duration_cast<duration<float>>(currentTime - lastTime);
             lastTime = currentTime;
 
-            bool topDownView = false;
             // Handle input for top-down view
             if (Keyboard::is_key_pressed(Keyboard::U)) {
                 topDownView = !topDownView; // Toggle top-down view
@@ -122,10 +121,11 @@ int main(int argc, char** argv) {
             if (topDownView) {
                 // Set top-down view camera position and orientation
                 cameraPosX = (grid_size * spacing) / 2.0f;
-                cameraPosY = 500.0f; // Set height for the top-down view
+                cameraPosY = 100.0f; // Set height for the top-down view
                 cameraPosZ = (grid_size * spacing) / 2.0f;
                 cameraYaw = 0.0f;
                 cameraPitch = -90.0f * (3.14159f / 180.0f); // Look straight down
+                topDownView = false;
             } else { 
 
                 // Apply movement to the camera
@@ -243,10 +243,19 @@ int main(int argc, char** argv) {
             }
         }
 
-        chunk1.submit_batch();
-        // chunk2.submit_batch();
-        // chunk3.submit_batch();
-        // chunk4.submit_batch();
+        // Check if the G key is pressed
+        if (Keyboard::is_key_pressed(GLFW_KEY_E)) {
+            // Get the player's current position
+            int chunkX = static_cast<int>(cameraPosX) / CHUNK_WIDTH;
+            int chunkZ = static_cast<int>(cameraPosZ) / CHUNK_DEPTH;
+
+            ChunkManager::build_chunk(chunkX, 0, chunkZ);
+        }
+
+        ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
+
+        ChunkManager::update();
+        ChunkManager::render();
 
         Window::end_update();
     }

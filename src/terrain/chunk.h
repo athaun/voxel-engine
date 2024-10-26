@@ -6,13 +6,13 @@
 #include "../render/batch.h"
 #include "voxel.h"
 
-const int CHUNK_WIDTH = 10;
-const int CHUNK_DEPTH = 10;
-const int CHUNK_HEIGHT = 10;
+const int CHUNK_WIDTH = 20;
+const int CHUNK_DEPTH = 20;
+const int CHUNK_HEIGHT = 20;
 
 class Chunk {
 public:
-    Chunk(int x, int z);
+    Chunk(int x, int y, int z);
     ~Chunk();
 
     Render::Batch& get_batch();
@@ -20,6 +20,7 @@ public:
 
     Voxel get_voxel(int x, int y, int z) const;
     void set_voxel(int x, int y, int z, Voxel voxel);
+    std::pair<int, int> get_position() const;
 
 private:
     double terrain(int x, int y, int z);
@@ -27,7 +28,7 @@ private:
     uint8_t get_visible_faces(int x, int y, int z);
     voxel::Material get_material(int x, int y, int z);
 
-    int global_x, global_z;
+    int global_x, global_y, global_z;
     std::array<std::array<std::array<Voxel, CHUNK_HEIGHT>, CHUNK_DEPTH>, CHUNK_WIDTH> voxels;
     Render::Batch* batch;
 };

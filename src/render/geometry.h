@@ -37,4 +37,6 @@ Mesh cube();
 Mesh colored_cube(uint32_t color);
 Mesh cube(uint8_t used_faces);
 
+Mesh quad(int face, float width, float height);
+
 }  // namespace Render

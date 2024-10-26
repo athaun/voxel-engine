@@ -119,7 +119,7 @@ struct Camera
 		m_verticalAngle = 0.0f;
 		m_mouseSpeed = 0.0020f;
 		m_gamepadSpeed = 0.04f;
-		m_moveSpeed = 30.0f;
+		m_moveSpeed = 20.0f;
 		m_keys = 0;
 		m_mouseDown = false;
 	}
