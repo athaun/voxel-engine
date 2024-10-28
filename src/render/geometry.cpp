@@ -1,6 +1,7 @@
 #include "geometry.h"
 #include <bx/math.h>
 #include <iostream>
+#include "log.h"
 
 namespace Render {
     Mesh transform_mesh(Mesh mesh, float x, float y, float z) {
@@ -21,28 +22,42 @@ namespace Render {
         return mesh;
     }
 
-    Mesh cube(float size) {
+    // The 8 vertices will look like this:
+    //   v4 ----------- v5
+    //   /|            /|      Axis orientation
+    //  / |           / |
+    // v0 --------- v1  |      y
+    // |  |         |   |      |
+    // |  v6 -------|-- v7     +--- x
+    // | /          |  /      /
+    // |/           | /      z
+    // v2 --------- v3
+    std::vector<Index> cube_indices = {
+        0, 1, 2,    1, 3, 2,    // Front face  *
+        5, 7, 3,    1, 5, 3,    // Right face  *
+        7, 5, 4,    6, 7, 4,    // Back face
+        4, 0, 6,    0, 2, 6,    // Left face
+        5, 0, 4,    0, 5, 1,    // Top face 
+        2, 3, 6,    6, 3, 7     // Bottom faceit 
+    };
+
+    std::vector<Vertex> cube_vertices = {
+        {-0.5,  0.5,  0.5, 1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 0
+        { 0.5,  0.5,  0.5, 0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 1
+        {-0.5, -0.5,  0.5, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 2
+        { 0.5, -0.5,  0.5, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 3
+        {-0.5,  0.5, -0.5, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 4
+        { 0.5,  0.5, -0.5, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 5
+        {-0.5, -0.5, -0.5, 0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 6
+        { 0.5, -0.5, -0.5, 1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 7
+    };
+
+
+    Mesh cube() {
         Mesh mesh;
-        mesh.vertices = {
-            // Position              // Texture UVs    // Smoothed Normals (Will be modified below)
-            {-size,  size,  size,     1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 0
-            { size,  size,  size,     0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 1
-            {-size, -size,  size,     1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 2
-            { size, -size,  size,     0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 3
-            {-size,  size, -size,     0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 4
-            { size,  size, -size,     1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 5
-            {-size, -size, -size,     0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 6
-            { size, -size, -size,     1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 7
-        };
+        mesh.vertices = cube_vertices;
         // Indices unchanged
-        mesh.vertexIndices = {
-            0, 1, 2, 1, 3, 2,  // Front face
-            4, 6, 5, 5, 6, 7,  // Back face
-            0, 2, 4, 4, 2, 6,  // Left face
-            1, 5, 3, 5, 7, 3,  // Right face
-            0, 4, 1, 4, 5, 1,  // Top face
-            2, 3, 6, 6, 3, 7,  // Bottom face
-        };
+        mesh.vertex_indices = cube_indices;
         
     std::vector<bx::Vec3> normals(8, bx::Vec3(0.0f, 0.0f, 0.0f));
     std::vector<bool> face_contributed(8 * 6, false);  // Track which faces have contributed to each vertex
@@ -65,7 +80,7 @@ namespace Render {
         // Get the vertices that form this face
         std::vector<uint16_t> face_vertices;
         for (size_t i = 0; i < 6; i++) {
-            uint16_t idx = mesh.vertexIndices[baseIndex + i];
+            uint16_t idx = mesh.vertex_indices[baseIndex + i];
             if (std::find(face_vertices.begin(), face_vertices.end(), idx) == face_vertices.end()) {
                 face_vertices.push_back(idx);
             }
@@ -92,5 +107,37 @@ namespace Render {
     }
 
     return mesh;
+    }
+
+    Mesh cube(uint8_t used_faces) {
+        Mesh mesh;
+
+        mesh.vertices = cube_vertices;
+        for (int i = 0; i < 6; ++i) {
+            if (!(used_faces & (1 << i))) continue;
+
+            switch (i) {
+                case 0: // Front face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin(), cube_indices.begin() + 6);
+                    break;
+                case 1: // Right face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 6, cube_indices.begin() + 12);
+                    break;
+                case 2: // Back face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 12, cube_indices.begin() + 18);
+                    break;
+                case 3: // Left face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 18, cube_indices.begin() + 24);
+                    break;
+                case 4: // Top face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 24, cube_indices.begin() + 30);
+                    break;
+                case 5: // Bottom face
+                    mesh.vertex_indices.insert(mesh.vertex_indices.end(), cube_indices.begin() + 30, cube_indices.end());
+                    break;
+            }
+        }
+
+        return mesh;
     }
 }

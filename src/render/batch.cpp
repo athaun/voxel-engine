@@ -1,5 +1,6 @@
 #include "batch.h"
 #include "texture.h"
+#include "../core/Log.h"
 
 namespace Render {
     Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name) {
@@ -11,7 +12,6 @@ namespace Render {
         // Create dynamic vertex and index buffers to store the batch data
         this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
         this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
-
         // Load texture (solid color or actual image)
         this->grassTexture = loadTexture("src/static/grass.jpg");
         // Create the shader program and uniform only once
@@ -21,6 +21,13 @@ namespace Render {
         this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
 
+    Batch::Batch() {
+        this->max_vertices = 0;
+        this->max_indices = 0;
+        this->used_vertices = 0;
+        this->used_indices = 0;
+    }
+
     Batch::~Batch() {
         bgfx::destroy(this->vertex_buffer);
         bgfx::destroy(this->index_buffer);
@@ -28,7 +35,7 @@ namespace Render {
         bgfx::destroy(this->grassTexture);
         bgfx::destroy(this->s_texture);
         bgfx::destroy(this->u_ambientColor);
-        bgfx::destroy(this->u_lightDirection);
+        bgfx::destroy(this->u_lightDirection);   
     }
 
     void Batch::submit() {
@@ -48,20 +55,20 @@ namespace Render {
     }
 
     bool Batch::push_mesh (Mesh mesh) {
-        if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertexIndices.size() > max_indices)) {
+        if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertex_indices.size() > max_indices)) {
             return false;
         }
         
         // Adjust indices to account for the existing vertices in the buffer
-        for (size_t i = 0; i < mesh.vertexIndices.size(); ++i) {
-            mesh.vertexIndices[i] += used_vertices; // Offset by the number of used vertices
+        for (size_t i = 0; i < mesh.vertex_indices.size(); ++i) {
+            mesh.vertex_indices[i] += used_vertices; // Offset by the number of used vertices
         }
 
         bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
-        bgfx::update(this->index_buffer, used_indices, bgfx::copy(mesh.vertexIndices.data(), sizeof(Index) * mesh.vertexIndices.size()));
+        bgfx::update(this->index_buffer, used_indices, bgfx::copy(mesh.vertex_indices.data(), sizeof(Index) * mesh.vertex_indices.size()));
 
         used_vertices += mesh.vertices.size();
-        used_indices += mesh.vertexIndices.size();
+        used_indices += mesh.vertex_indices.size();
 
         return true;
     }

@@ -27,12 +27,16 @@ typedef std::vector<Index> VertexBufferIndices;
 
 typedef struct Mesh {
     VertexBuffer vertices;
-    VertexBufferIndices vertexIndices;
+    VertexBufferIndices vertex_indices;
 };
 
 Mesh transform_mesh(Mesh mesh, float x, float y, float z);
 Mesh scale_mesh(Mesh mesh, float x, float y, float z);
 
-Mesh cube(float size);
+Mesh cube();
+Mesh colored_cube(uint32_t color);
+Mesh cube(uint8_t used_faces);
+
+Mesh quad(int face, float width, float height);
 
 }  // namespace Render

@@ -34,6 +34,7 @@ class Batch {
 
    public:
     Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name);
+    Batch();
     ~Batch();
 
     void submit();
