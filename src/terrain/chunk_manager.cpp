@@ -56,7 +56,7 @@ namespace ChunkManager {
     }
 
     void init() {
-        chunk_circle(0, 0, 2);
+        chunk_circle(0, 0, 4);
     }
 
     void update() {
@@ -82,9 +82,10 @@ namespace ChunkManager {
         }
     }
 
-    void render() {
+    void render(const bx::Vec3& lightDir) {
         std::lock_guard<std::mutex> lock(chunks_mutex);
         for (auto& [_, chunk] : chunks) {
+            chunk->setLightDirection(lightDir);
             chunk->submit_batch();
         }
     }

@@ -6,7 +6,7 @@
 namespace ChunkManager {
     void init();
     void update();
-    void render();
+    void render(const bx::Vec3& lightDir);
     void destroy();
 
     void chunk_circle(int x, int z, int radius);

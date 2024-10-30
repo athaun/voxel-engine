@@ -77,9 +77,8 @@ Movement get_movement_direction() {
 bx::Vec3 forward(0.0f, 0.0f, 1.0f);
 bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
-
 int spacing = 1.0f;
-int grid_size = 10;
+int grid_size = 100;
 
 
 int main(int argc, char** argv) {
@@ -270,10 +269,10 @@ int main(int argc, char** argv) {
             ChunkManager::build_chunk(chunkX, 0, chunkZ);
         }
 
-        ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
+        //ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
 
         ChunkManager::update();
-        ChunkManager::render();
+        ChunkManager::render(lightDirection);
 
         Window::end_update();
     }

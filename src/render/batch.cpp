@@ -21,13 +21,6 @@ namespace Render {
         this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
 
-    Batch::Batch() {
-        this->max_vertices = 0;
-        this->max_indices = 0;
-        this->used_vertices = 0;
-        this->used_indices = 0;
-    }
-
     Batch::~Batch() {
         bgfx::destroy(this->vertex_buffer);
         bgfx::destroy(this->index_buffer);

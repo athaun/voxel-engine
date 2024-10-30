@@ -111,6 +111,10 @@ Voxel Chunk::get_voxel(int x, int y, int z) const {
     return voxels[x][z][y];
 }
 
+void Chunk::setLightDirection(const bx::Vec3& lightDir){
+    batch->setLightDirection(lightDir);
+}
+
 void Chunk::set_voxel(int x, int y, int z, Voxel voxel) {
     voxels[x][z][y] = voxel;
 }
