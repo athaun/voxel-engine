@@ -13,28 +13,28 @@
 #include "noise/OpenSimplexNoise.h"
 #include <bgfx/bgfx.h>
 #include <bx/timer.h>
+#include "terrain/chunk.h"
+#include "terrain/chunk_manager.h"
+
 
 // For Calculating DeltaTime
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
+
+bgfx::UniformHandle u_lightDirection;
 
 
 // Camera position variables
 float cameraPosX = 0.0f;
 float cameraPosY = 0.0f;
 float cameraPosZ = -5.0f;
-float normalSpeed = 1.0f;
+float normalSpeed = 0.2f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
 
 float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
 float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
-
-// Define noise parameters
-int octaves = 5;   // Number of noise layers
-double persistence = 0.3;  // How much each octave contributes to the overall noise
-double lacunarity = 2.0;   // How much the frequency increases per octave
 
 bool enterKeyPressedLastFrame = false; // Track the previous state of the ENTER key
 bool isFlying = true; // Start in flying mode by default
@@ -43,6 +43,11 @@ bool canJump = false;
 float verticalVelocity = 0.0f; // The player's current vertical velocity
 const float gravity = -15.0f; // Gravity acceleration (you can tweak this value)
 const float jumpStrength = 10.0f; // How high the player can jump
+
+// Light direction variables
+float angle = 0.0f; // Initialize angle for orbiting
+float orbitSpeed = 0.005f; // Adjust this to control the speed of the orbit
+float orbitRadius = 100.0f; // Radius of the orbit above and below the voxel plane
 
 ////////////////////////
 // Define a struct for movement direction
@@ -71,28 +76,8 @@ Movement get_movement_direction() {
 bx::Vec3 forward(0.0f, 0.0f, 1.0f);
 bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
-float getTerrainHeight(int x, int z, int octaves, double persistence, double lacunarity) {
-    double noiseValue = 0.0;
-    double amplitude = 1.2;
-    double frequency = 0.4;
-    double maxValue = 0.0;
-
-    for (int i = 0; i < octaves; ++i) {
-
-        // Create a new instance of the noise generator with a new seed
-        OpenSimplexNoise::Noise noiseGen(i); // Adjust the seed
-
-        // Calculate the noise value for the current octave
-        noiseValue += noiseGen.eval(x * 0.01 * frequency, z * 0.01 * frequency) * amplitude;
-        maxValue += amplitude;
-
-        // Update amplitude and frequency for the next octave
-        amplitude *= persistence;
-        frequency *= lacunarity;
-    }
-
-    return noiseValue * 200.0f; // Scale the height
-}
+int spacing = 1.0f;
+int grid_size = 100;
 
 
 int main(int argc, char** argv) {
@@ -102,36 +87,11 @@ int main(int argc, char** argv) {
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
     bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
-    int grid_size = 500;
-    float spacing = 1.0f;
+    // Initialize the chunk manager
+    ChunkManager::init();
+    bx::Vec3 lightDirection(1.0f, 0.0f, 0.0f);
+    u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
 
-    int numCubes = grid_size * grid_size;
-    int verticesPerCube = 8;  // Assuming each cube has 8 vertices
-    int indicesPerCube = 36;  // Assuming each cube has 36 indices (12 triangles * 3 indices each)
-    Render::Batch batch(numCubes * verticesPerCube, numCubes * indicesPerCube, "cubes");
-
-    Render::Mesh cube = Render::cube(0.5f);
-    batch.push_mesh(cube);
-
-    for (int x = 0; x < grid_size; ++x) {
-        for (int z = 0; z < grid_size; ++z) {
-            Render::Mesh c(cube);
-            int noiseValue = getTerrainHeight(x, z, octaves, persistence, lacunarity);
-            int y = noiseValue;
-            batch.push_mesh(Render::transform_mesh(c, x * spacing, y, z * spacing));
-        }
-    }
-
-    // Render::Mesh triangle;
-    // triangle.vertices = {
-    //     { 0.0f,  2.0f, 0.0f, 0xff00ff00},
-    //     {-2.0f, -2.0f, 0.0f, 0xff0000ff},
-    //     { 2.0f, -2.0f, 0.0f, 0xffff0000},
-    // };
-    // triangle.vertexIndices = {
-    //     0, 1, 2,
-    // };
-    // batch.push_mesh(triangle);
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -143,26 +103,25 @@ int main(int argc, char** argv) {
     // Recommended to be less than 90 or the camera will invert/flip
     const float maxPitch = 89.0f * (3.14159f / 180.0f);  // Convert degrees to radians
 
+    bool topDownView = true;
     while (!Window::should_close()) {
         Window::begin_update();
 
         {           
-            // Inside your rendering loop
-            bgfx::setDebug(BGFX_DEBUG_TEXT); // Only enable debug text
-            // Clear the debug text
+            bgfx::setDebug(BGFX_DEBUG_TEXT);
             bgfx::dbgTextClear(BGFX_DEBUG_TEXT);
 
             // Display the FPS
             bgfx::dbgTextPrintf(0, 0, 0x0f, "FPS: %.2f", NULL);
             bgfx::dbgTextPrintf(0, 2, 0x0f, "Player Position: (%.2f, %.2f, %.2f)", cameraPosX, cameraPosY, cameraPosZ);
-
+            bgfx::dbgTextPrintf(0, 4, 0x0f, "Player Rotation: (%.2f, %.2f)", cameraYaw, cameraPitch);
+            
 
             // Calculate delta time
             steady_clock::time_point currentTime = steady_clock::now();
             duration<float> deltaTime = duration_cast<duration<float>>(currentTime - lastTime);
             lastTime = currentTime;
 
-            bool topDownView = false;
             // Handle input for top-down view
             if (Keyboard::is_key_pressed(Keyboard::U)) {
                 topDownView = !topDownView; // Toggle top-down view
@@ -171,10 +130,11 @@ int main(int argc, char** argv) {
             if (topDownView) {
                 // Set top-down view camera position and orientation
                 cameraPosX = (grid_size * spacing) / 2.0f;
-                cameraPosY = 500.0f; // Set height for the top-down view
+                cameraPosY = 100.0f; // Set height for the top-down view
                 cameraPosZ = (grid_size * spacing) / 2.0f;
                 cameraYaw = 0.0f;
                 cameraPitch = -90.0f * (3.14159f / 180.0f); // Look straight down
+                topDownView = false;
             } else { 
 
                 // Apply movement to the camera
@@ -238,7 +198,7 @@ int main(int argc, char** argv) {
                     // Get the terrain height directly below the player
                     int gridX = static_cast<int>(cameraPosX / spacing);
                     int gridZ = static_cast<int>(cameraPosZ / spacing);
-                    float terrainHeight = getTerrainHeight(gridX, gridZ, octaves, persistence, lacunarity);
+                    float terrainHeight = 100; //getTerrainHeight(gridX, gridZ, octaves, persistence, lacunarity);
 
                     // Check if player is below terrain height
                     if (cameraPosY < terrainHeight + 5.0f) {
@@ -289,10 +249,31 @@ int main(int argc, char** argv) {
                 float proj[16];
                 bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
                 bgfx::setViewTransform(0, view, proj);
+
+                // Update light direction to create an orbiting effect
+                angle += orbitSpeed; // Increment angle
+                float lightX = 0.0f; // Calculate X position
+                float lightY = orbitRadius * cos(angle); // Calculate Y position
+                float lightZ = orbitRadius * sin(angle); // Calculate Z position
+            
+
+                bx::Vec3 lightDirection(-lightX, -lightY, -lightZ); // Create the new light direction vector
+                bgfx::setUniform(u_lightDirection, &lightDirection);  // Set the uniform value for lightDirection vector
             }
         }
 
-        batch.submit();
+        // Check if the G key is pressed
+        if (Keyboard::is_key_pressed(GLFW_KEY_E)) {
+            // Get the player's current position
+            int chunkX = static_cast<int>(cameraPosX) / CHUNK_WIDTH;
+            int chunkZ = static_cast<int>(cameraPosZ) / CHUNK_DEPTH;
+
+            ChunkManager::build_chunk(chunkX, 0, chunkZ);
+        }
+
+        //ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
+        ChunkManager::update();
+        ChunkManager::render();
 
         Window::end_update();
     }

@@ -123,6 +123,7 @@ project "voxels"
 		path.join(BX_DIR, "include"),
 		path.join(GLFW_DIR, "include"),
 		path.join(BIMG_DIR, "include"),
+		path.join(BIMG_DIR, "3rdparty/stb"),
 	}
 	links { "bgfx", "bimg", "bx", "glfw" }
 	filter "system:linux" links { "dl", "GL", "pthread", "X11" }
