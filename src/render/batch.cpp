@@ -36,9 +36,8 @@ namespace Render {
         bgfx::setTexture(0, this->s_texture, this->grassTexture);
         
         // Set the ambient color
-        float ambientColor[4] = { 0.5f, 0.5f, 0.5f, 1.0f }; // Low intensity gray
+        float ambientColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f }; // Low intensity gray
         bgfx::setUniform(u_ambientColor, ambientColor);
-
         // Bind vertex and index buffers
         bgfx::setVertexBuffer(0, this->vertex_buffer);
         bgfx::setIndexBuffer(this->index_buffer);
@@ -142,7 +141,4 @@ namespace Render {
         return bgfx::createProgram(vertex_shader, fragment_shader, false);
     }
 
-    void Batch::setLightDirection(const bx::Vec3& direction) {
-        bgfx::setUniform(u_lightDirection, &direction);  // Set the uniform value
-    }
 }  // namespace Render

@@ -1,6 +1,5 @@
 #include "geometry.h"
 #include <bx/math.h>
-#include <iostream>
 #include "log.h"
 
 namespace Render {
@@ -53,66 +52,63 @@ namespace Render {
     };
 
 
-    Mesh cube() {
+    Mesh cube(uint8_t used_faces) {
         Mesh mesh;
+
+        // Initialize vertices
         mesh.vertices = cube_vertices;
-        // Indices unchanged
-        mesh.vertex_indices = cube_indices;
         
-    std::vector<bx::Vec3> normals(8, bx::Vec3(0.0f, 0.0f, 0.0f));
-    std::vector<bool> face_contributed(8 * 6, false);  // Track which faces have contributed to each vertex
+        // Clear existing vertex indices
+        mesh.vertex_indices.clear();
 
-    // Pre-computed face normals for a cube
-    const bx::Vec3 FACE_NORMALS[] = {
-        bx::Vec3(0.0f, 0.0f, 1.0f),   // Front face
-        bx::Vec3(0.0f, 0.0f, -1.0f),  // Back face
-        bx::Vec3(-1.0f, 0.0f, 0.0f),  // Left face
-        bx::Vec3(1.0f, 0.0f, 0.0f),   // Right face
-        bx::Vec3(0.0f, 1.0f, 0.0f),   // Top face
-        bx::Vec3(0.0f, -1.0f, 0.0f)   // Bottom face
-    };
+        // Normals and face contribution tracking
+        std::vector<bx::Vec3> normals(8, bx::Vec3(0.0f, 0.0f, 0.0f));
+        std::vector<bool> face_contributed(8 * 6, false);  // Track which faces have contributed to each vertex
 
-    // Process each face
-    for (size_t face = 0; face < 6; face++) {
-        // Get the four indices for this face (two triangles)
-        size_t baseIndex = face * 6;  // 6 indices per face (2 triangles * 3 vertices)
-        
-        // Get the vertices that form this face
-        std::vector<uint16_t> face_vertices;
-        for (size_t i = 0; i < 6; i++) {
-            uint16_t idx = mesh.vertex_indices[baseIndex + i];
-            if (std::find(face_vertices.begin(), face_vertices.end(), idx) == face_vertices.end()) {
-                face_vertices.push_back(idx);
+        // Pre-computed face normals for a cube
+        const bx::Vec3 FACE_NORMALS[] = {
+            bx::Vec3(0.0f, 0.0f, 1.0f),   // Front face
+            bx::Vec3(0.0f, 0.0f, -1.0f),  // Back face
+            bx::Vec3(-1.0f, 0.0f, 0.0f),  // Left face
+            bx::Vec3(1.0f, 0.0f, 0.0f),   // Right face
+            bx::Vec3(0.0f, 1.0f, 0.0f),   // Top face
+            bx::Vec3(0.0f, -1.0f, 0.0f)   // Bottom face
+        };
+
+        // Process each face based on used_faces
+        for (size_t face = 0; face < 6; face++) {
+            if (!(used_faces & (1 << face))) continue;  // Skip if face not used
+
+            // Get the four indices for this face (two triangles)
+            size_t baseIndex = face * 6;  // 6 indices per face (2 triangles * 3 vertices)
+
+            // Get the vertices that form this face
+            std::vector<uint16_t> face_vertices;
+            for (size_t i = 0; i < 6; i++) {
+                uint16_t idx = cube_indices[baseIndex + i];
+                if (std::find(face_vertices.begin(), face_vertices.end(), idx) == face_vertices.end()) {
+                    face_vertices.push_back(idx);
+                }
             }
-        }
 
-        // Add the face normal to each vertex of this face
-        bx::Vec3 face_normal = FACE_NORMALS[face];
-        for (uint16_t vertex_idx : face_vertices) {
-            if (!face_contributed[face * 8 + vertex_idx]) {
+            // Add the face normal to each vertex of this face
+            bx::Vec3 face_normal = FACE_NORMALS[face];
+            for (uint16_t vertex_idx : face_vertices) {
                 normals[vertex_idx] = bx::add(normals[vertex_idx], face_normal);
                 face_contributed[face * 8 + vertex_idx] = true;
             }
         }
-    }
 
-    // Normalize and assign the averaged normals
-    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
-        // Each vertex should have exactly 3 face normals contributing
-        bx::Vec3 normalized_normal = bx::normalize(normals[i]);
-        
-        mesh.vertices[i].nx = normalized_normal.x;
-        mesh.vertices[i].ny = normalized_normal.y;
-        mesh.vertices[i].nz = normalized_normal.z;
-    }
+        // Normalize and assign the averaged normals to the vertices
+        for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+            bx::Vec3 normalized_normal = bx::normalize(normals[i]);
+            
+            mesh.vertices[i].nx = normalized_normal.x;
+            mesh.vertices[i].ny = normalized_normal.y;
+            mesh.vertices[i].nz = normalized_normal.z;
+        }
 
-    return mesh;
-    }
-
-    Mesh cube(uint8_t used_faces) {
-        Mesh mesh;
-
-        mesh.vertices = cube_vertices;
+        // Generate vertex indices based on used_faces
         for (int i = 0; i < 6; ++i) {
             if (!(used_faces & (1 << i))) continue;
 

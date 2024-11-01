@@ -17,7 +17,6 @@ public:
 
     Render::Batch& get_batch();
     void submit_batch();
-    void setLightDirection(const bx::Vec3& lightDir);
 
     Voxel get_voxel(int x, int y, int z) const;
     void set_voxel(int x, int y, int z, Voxel voxel);

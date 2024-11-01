@@ -34,7 +34,6 @@ class Batch {
 
    public:
     Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name);
-    Batch();
     ~Batch();
 
     void submit();
@@ -43,7 +42,6 @@ class Batch {
 
     bool push_triangle(Vertex v1, Vertex v2, Vertex v3);
 
-    void setLightDirection(const bx::Vec3& direction);
    
    private:
     const bgfx::ProgramHandle load_shader(const char *shader_name);

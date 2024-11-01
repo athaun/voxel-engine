@@ -4,6 +4,7 @@
 #include <future>
 #include <mutex>
 #include <queue>
+#include <iostream>
 
 namespace ChunkManager {
     struct pair_hash {
@@ -56,7 +57,7 @@ namespace ChunkManager {
     }
 
     void init() {
-        chunk_circle(0, 0, 4);
+        chunk_circle(0, 0, 10);
     }
 
     void update() {
@@ -82,28 +83,11 @@ namespace ChunkManager {
         }
     }
 
-    void render(const bx::Vec3& lightDir) {
+    void render() {
         std::lock_guard<std::mutex> lock(chunks_mutex);
         for (auto& [_, chunk] : chunks) {
-            chunk->setLightDirection(lightDir);
             chunk->submit_batch();
         }
     }
 
-    void destroy() {
-        // Wait for all pending chunks to complete
-        for (auto& pending : pending_chunks) {
-            if (pending.future.valid()) {
-                Chunk* chunk = pending.future.get();
-                delete chunk;
-            }
-        }
-        pending_chunks.clear();
-        
-        std::lock_guard<std::mutex> lock(chunks_mutex);
-        for (auto& [_, chunk] : chunks) {
-            delete chunk;
-        }
-        chunks.clear();
-    }
 }

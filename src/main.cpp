@@ -21,6 +21,8 @@
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
 
+bgfx::UniformHandle u_lightDirection;
+
 
 // Camera position variables
 float cameraPosX = 0.0f;
@@ -30,11 +32,9 @@ float normalSpeed = 0.2f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
 
-float cameraYaw = 176.0f;   // Rotation around the Y axis (horizontal)
+float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
 float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
-
-
 
 bool enterKeyPressedLastFrame = false; // Track the previous state of the ENTER key
 bool isFlying = true; // Start in flying mode by default
@@ -47,8 +47,7 @@ const float jumpStrength = 10.0f; // How high the player can jump
 // Light direction variables
 float angle = 0.0f; // Initialize angle for orbiting
 float orbitSpeed = 0.005f; // Adjust this to control the speed of the orbit
-float orbitRadius = 5.0f; // Radius of the orbit above and below the voxel plane
-bx::Vec3 lightDirection(0.0f, -1.0f, 1.0f);
+float orbitRadius = 100.0f; // Radius of the orbit above and below the voxel plane
 
 ////////////////////////
 // Define a struct for movement direction
@@ -90,6 +89,9 @@ int main(int argc, char** argv) {
 
     // Initialize the chunk manager
     ChunkManager::init();
+    bx::Vec3 lightDirection(1.0f, 0.0f, 0.0f);
+    u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
+
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -255,8 +257,8 @@ int main(int argc, char** argv) {
                 float lightZ = orbitRadius * sin(angle); // Calculate Z position
             
 
-                bx::Vec3 lightDirection(lightX, lightY, lightZ); // Create the new light direction vector
-                //batch.setLightDirection(lightDirection);
+                bx::Vec3 lightDirection(-lightX, -lightY, -lightZ); // Create the new light direction vector
+                bgfx::setUniform(u_lightDirection, &lightDirection);  // Set the uniform value for lightDirection vector
             }
         }
 
@@ -270,9 +272,8 @@ int main(int argc, char** argv) {
         }
 
         //ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
-
         ChunkManager::update();
-        ChunkManager::render(lightDirection);
+        ChunkManager::render();
 
         Window::end_update();
     }

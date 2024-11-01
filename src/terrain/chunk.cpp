@@ -1,13 +1,11 @@
 #include "chunk.h"
 #include "../core/Log.h"
 #include "../noise/OpenSimplexNoise.h"
-#include <iostream>
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
     static int index_count = chunk_volume * 36;
-
     batch = new Render::Batch(vertex_count, index_count, "cubes");
 
 
@@ -109,10 +107,6 @@ void Chunk::submit_batch() {
 
 Voxel Chunk::get_voxel(int x, int y, int z) const {
     return voxels[x][z][y];
-}
-
-void Chunk::setLightDirection(const bx::Vec3& lightDir){
-    batch->setLightDirection(lightDir);
 }
 
 void Chunk::set_voxel(int x, int y, int z, Voxel voxel) {
