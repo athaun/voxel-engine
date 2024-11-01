@@ -1,4 +1,4 @@
-$input v_texcoord0, v_normal
+$input v_texcoord0, v_normal, v_ambient_occlusion
 
 #include <bgfx_shader.sh>
 #include "shaderlib.sh"
@@ -12,7 +12,7 @@ void main() {
     vec4 texColor = texture2D(s_texColor, v_texcoord0);
 
     // Calculate ambient lighting
-    vec3 ambient = u_ambientColor * texColor.rgb;
+    vec3 ambient = u_ambientColor * texColor.rgb * v_ambient_occlusion;
 
     // Calculate diffuse lighting
     // Normalize the light direction and calculate dot product

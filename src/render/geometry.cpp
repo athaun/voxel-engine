@@ -208,6 +208,7 @@ namespace Render {
                 v.nx = face_normal.x;
                 v.ny = face_normal.y;
                 v.nz = face_normal.z;
+                v.ao = 1.0f;
                 
                 mesh.vertices.push_back(v);
                 

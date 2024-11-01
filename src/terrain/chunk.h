@@ -27,7 +27,7 @@ private:
     bool is_empty(int x, int y, int z);
     uint8_t get_visible_faces(int x, int y, int z);
     voxel::Material get_material(int x, int y, int z);
-
+    
     int global_x, global_y, global_z;
     std::array<std::array<std::array<Voxel, CHUNK_HEIGHT>, CHUNK_DEPTH>, CHUNK_WIDTH> voxels;
     Render::Batch* batch;
