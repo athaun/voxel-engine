@@ -16,24 +16,25 @@
 #include "terrain/chunk.h"
 #include "terrain/chunk_manager.h"
 
+
 // For Calculating DeltaTime
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
 
+bgfx::UniformHandle u_lightDirection;
+
 
 // Camera position variables
 float cameraPosX = 0.0f;
-float cameraPosY = 20.5f;
-float cameraPosZ = 0.0f;
-float normalSpeed = 0.1f;
+float cameraPosY = 0.0f;
+float cameraPosZ = -5.0f;
+float normalSpeed = 0.2f;
 float fastSpeed = 2.5f; // For when user holds Shift
 float movementSpeed = normalSpeed; // Start with normal speed
 
-float cameraYaw = 176.0f;   // Rotation around the Y axis (horizontal)
+float cameraYaw = 0.0f;   // Rotation around the Y axis (horizontal)
 float cameraPitch = 0.0f; // Rotation around the X axis (vertical)
 float mouseSensitivity = 0.004f; // Change this if you want to modify the sensitivity.
-
-
 
 bool enterKeyPressedLastFrame = false; // Track the previous state of the ENTER key
 bool isFlying = true; // Start in flying mode by default
@@ -42,6 +43,11 @@ bool canJump = false;
 float verticalVelocity = 0.0f; // The player's current vertical velocity
 const float gravity = -15.0f; // Gravity acceleration (you can tweak this value)
 const float jumpStrength = 10.0f; // How high the player can jump
+
+// Light direction variables
+float angle = 0.0f; // Initialize angle for orbiting
+float orbitSpeed = 0.005f; // Adjust this to control the speed of the orbit
+float orbitRadius = 100.0f; // Radius of the orbit above and below the voxel plane
 
 ////////////////////////
 // Define a struct for movement direction
@@ -70,9 +76,9 @@ Movement get_movement_direction() {
 bx::Vec3 forward(0.0f, 0.0f, 1.0f);
 bx::Vec3 right(1.0f, 0.0f, 0.0f);
 
-
 int spacing = 1.0f;
 int grid_size = 100;
+
 
 int main(int argc, char** argv) {
 
@@ -83,6 +89,9 @@ int main(int argc, char** argv) {
 
     // Initialize the chunk manager
     ChunkManager::init();
+    bx::Vec3 lightDirection(1.0f, 0.0f, 0.0f);
+    u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
+
 
     // In Window.cpp, mouse position is initialized and defined to be at the center of the screen.
     // Thus, the last known beginning mouse position, or the first mouse position, will be in the
@@ -240,6 +249,16 @@ int main(int argc, char** argv) {
                 float proj[16];
                 bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
                 bgfx::setViewTransform(0, view, proj);
+
+                // Update light direction to create an orbiting effect
+                angle += orbitSpeed; // Increment angle
+                float lightX = 0.0f; // Calculate X position
+                float lightY = orbitRadius * cos(angle); // Calculate Y position
+                float lightZ = orbitRadius * sin(angle); // Calculate Z position
+            
+
+                bx::Vec3 lightDirection(-lightX, -lightY, -lightZ); // Create the new light direction vector
+                bgfx::setUniform(u_lightDirection, &lightDirection);  // Set the uniform value for lightDirection vector
             }
         }
 
@@ -252,8 +271,7 @@ int main(int argc, char** argv) {
             ChunkManager::build_chunk(chunkX, 0, chunkZ);
         }
 
-        ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
-
+        //ChunkManager::chunk_circle(cameraPosX / CHUNK_WIDTH, cameraPosZ / CHUNK_DEPTH, 2);
         ChunkManager::update();
         ChunkManager::render();
 
