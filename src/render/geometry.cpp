@@ -185,6 +185,9 @@ namespace Render {
             const Vertex& vert2 = cube_vertices[v2_idx];
             
             // Calculate face normal using cross product
+            // This will produce a vector which points perpendicular 
+            // to the plane which is defined by edge1 and 2, which
+            // are edges of the face.
             bx::Vec3 edge1 = {
                 vert1.x - vert0.x,
                 vert1.y - vert0.y,
