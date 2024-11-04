@@ -90,6 +90,14 @@ namespace Window {
 
     void begin_update() {
         glfwPollEvents();
+
+        // bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_PT_LINES);
+
+		// int oldWidth = width, oldHeight = height;
+		// glfwGetWindowSize(window, &Window::width, &Window::height);
+		// if (width != oldWidth || height != oldHeight) {
+		// 	// Resize window :o
+		// }
     }
 
     void end_update() {
@@ -99,15 +107,8 @@ namespace Window {
     bool should_close() {
         return glfwWindowShouldClose(window);
     }
-    void get_mouse_position(float& x, float& y) {
-        double mouseX, mouseY;
-        glfwGetCursorPos(window, &mouseX, &mouseY);
-
-        x = static_cast<float>(mouseX);
-        y = static_cast<float>(mouseY);
-    }
-
-    bool is_key_pressed(int key) {
-        return glfwGetKey(window, key) == GLFW_PRESS;
+    
+    GLFWwindow* get_window() {
+        return window;  // Return the static window instance
     }
 }
