@@ -20,6 +20,8 @@
 // For Calculating DeltaTime
 using namespace std::chrono;
 steady_clock::time_point lastTime = steady_clock::now();
+float deltaTime = 0.0f;
+float fps = 0;
 
 bgfx::UniformHandle u_lightDirection;
 
@@ -48,6 +50,7 @@ const float jumpStrength = 10.0f; // How high the player can jump
 float angle = 0.0f; // Initialize angle for orbiting
 float orbitSpeed = 0.005f; // Adjust this to control the speed of the orbit
 float orbitRadius = 100.0f; // Radius of the orbit above and below the voxel plane
+
 
 ////////////////////////
 // Define a struct for movement direction
@@ -105,6 +108,26 @@ int main(int argc, char** argv) {
 
     bool topDownView = true;
     while (!Window::should_close()) {
+        // Calculate delta time
+        steady_clock::time_point currentTime = steady_clock::now();
+        std::chrono::duration<float> deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - lastTime);
+        lastTime = currentTime;
+
+        // FPS Calculation: Update FPS every second
+        static int frameCount = 0;
+        static std::chrono::duration<float> timeAccumulator(0.0f);  // Change this to a duration
+
+        timeAccumulator += deltaTime;  // Accumulate delta time
+        frameCount++;
+
+        if (timeAccumulator >= std::chrono::seconds(1)) {  // 1 second duration
+            fps = frameCount;  // Set FPS to the number of frames per second
+            timeAccumulator = std::chrono::duration<float>(0.0f);  // Reset the accumulator for the next second
+            frameCount = 0;    // Reset frame count for the next second
+        }
+
+
+
         Window::begin_update();
 
         {           
@@ -112,15 +135,12 @@ int main(int argc, char** argv) {
             bgfx::dbgTextClear(BGFX_DEBUG_TEXT);
 
             // Display the FPS
-            bgfx::dbgTextPrintf(0, 0, 0x0f, "FPS: %.2f", NULL);
+            bgfx::dbgTextPrintf(0, 0, 0x0f, "FPS: %.2f", fps);
             bgfx::dbgTextPrintf(0, 2, 0x0f, "Player Position: (%.2f, %.2f, %.2f)", cameraPosX, cameraPosY, cameraPosZ);
             bgfx::dbgTextPrintf(0, 4, 0x0f, "Player Rotation: (%.2f, %.2f)", cameraYaw, cameraPitch);
             
 
-            // Calculate delta time
-            steady_clock::time_point currentTime = steady_clock::now();
-            duration<float> deltaTime = duration_cast<duration<float>>(currentTime - lastTime);
-            lastTime = currentTime;
+            
 
             // Handle input for top-down view
             if (Keyboard::is_key_pressed(Keyboard::U)) {

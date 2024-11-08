@@ -1,35 +1,45 @@
 #include "chunk.h"
 #include "../core/Log.h"
 #include "../noise/OpenSimplexNoise.h"
+#include "../core/timer.h"
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
+    ScopedTimer t("Chunk constructor");
+
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
     static int index_count = chunk_volume * 36;
-    batch = new Render::Batch(vertex_count, index_count, "cubes");
 
+    batch = new Render::Batch(vertex_count, index_count, "cubes");
 
     int terrain_heights[CHUNK_WIDTH][CHUNK_DEPTH] = {};
 
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             int terrain_height = terrain(global_x + x, 0, global_z + z);
+
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
-                voxels[x][z][y].material = (terrain_height > y ? voxel::Material::STONE : voxel::Material::AIR);
+                Voxel v;
+                v.material = (terrain_height > y ? voxel::Material::STONE : voxel::Material::AIR);
+                set_voxel(x, y, z, v);
             }
+
             terrain_heights[x][z] = terrain_height;
+
         }
     } 
 
     uint8_t used_faces = 0b00000000;
 
+    ScopedTimer t1("Face culling");
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             for (int y = global_y * CHUNK_HEIGHT; y < (global_y * CHUNK_HEIGHT) + CHUNK_HEIGHT && y < terrain_heights[x][z]; y++) {
+                
                 used_faces = get_visible_faces(x, y, z);
                 
                 Render::Mesh c = Render::cube(used_faces);
-
+                
                 if (used_faces != 0) {
                     batch->push_mesh(Render::transform_mesh(c, global_x + x, y, global_z + z));
                 }
@@ -42,7 +52,7 @@ inline bool Chunk::is_empty(int x, int y, int z) {
     if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_DEPTH) {
         return true;
     }
-    return voxels[x][z][y].material == voxel::Material::AIR;
+    return get_voxel(x, y, z).material == voxel::Material::AIR;
 }
 
 // 15.8s to generate radius 5 of 20x20x20 chunks with ifs
@@ -105,14 +115,22 @@ void Chunk::submit_batch() {
     batch->submit();
 }
 
-Voxel Chunk::get_voxel(int x, int y, int z) const {
-    return voxels[x][z][y];
+Voxel Chunk::get_voxel(int x, int y, int z) {
+    return voxels[voxel_index(x, y, z)];
 }
 
 void Chunk::set_voxel(int x, int y, int z, Voxel voxel) {
-    voxels[x][z][y] = voxel;
+    voxels[voxel_index(x, y, z)] = voxel;
 }
 
-std::pair<int, int> Chunk::get_position() const {
+inline size_t Chunk::voxel_index(int x, int y, int z) {
+    size_t x_i = x % CHUNK_WIDTH;
+    size_t y_i = y % CHUNK_HEIGHT;
+    size_t z_i = z % CHUNK_DEPTH;
+
+    return x_i + (y_i * CHUNK_WIDTH) + (z_i * CHUNK_WIDTH * CHUNK_HEIGHT);
+}
+
+std::pair<int, int> Chunk::get_position() {
     return std::make_pair(global_x, global_z);
 }
