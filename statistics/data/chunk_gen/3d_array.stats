@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen/3d_array.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 23710.72
+median: 23286.35
+std_dev: 9263.99
+min: 0.00
+max: 37947.80
+count: 304.00
+95th_percentile: 37059.59
+99th_percentile: 37748.86
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 23813.83
+median: 23275.90
+std_dev: 9213.13
+min: 103.00
+max: 38148.00
+count: 312.00
+95th_percentile: 37177.73
+99th_percentile: 37958.68
+
+Generated on: 2024-11-08 18:22:29
+
+SUMMARY (for parsing):
+face_culling_mean:23710.72,face_culling_median:23286.35,face_culling_95th:37059.59,chunk_constructor_mean:23813.83,chunk_constructor_median:23275.90,chunk_constructor_95th:37177.73

@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen/flat_array.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 18799.53
+median: 19249.20
+std_dev: 7181.15
+min: 0.00
+max: 29364.90
+count: 315.00
+95th_percentile: 28407.99
+99th_percentile: 29192.30
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 18950.78
+median: 19365.50
+std_dev: 7192.35
+min: 33.19
+max: 29448.00
+count: 315.00
+95th_percentile: 28459.06
+99th_percentile: 29282.64
+
+Generated on: 2024-11-08 18:22:05
+
+SUMMARY (for parsing):
+face_culling_mean:18799.53,face_culling_median:19249.20,face_culling_95th:28407.99,chunk_constructor_mean:18950.78,chunk_constructor_median:19365.50,chunk_constructor_95th:28459.06
