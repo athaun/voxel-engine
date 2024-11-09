@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from chunk_gen_trends import create_comparison_plots
 
 def clean_and_parse_data(input_file):
     face_culling_times = []
@@ -106,9 +107,20 @@ def write_statistics_to_log(input_file, face_culling_times, chunk_constructor_ti
         f.write(f"chunk_constructor_mean:{chunk_stats['mean']:.2f},chunk_constructor_median:{chunk_stats['median']:.2f},")
         f.write(f"chunk_constructor_95th:{chunk_stats['95th_percentile']:.2f}\n")
 
-input_file = 'data/chunk_gen/push_mesh_to_vec_2.txt'
+def process_all_chunk_gen_files(directory):
+    # List all .txt files, excluding trends.txt
+    txt_files = [
+        os.path.join(directory, file) for file in os.listdir(directory)
+        if file.endswith('.txt') and file != 'trends.txt'
+    ]
 
-face_culling_times, chunk_constructor_times = clean_and_parse_data(input_file)
+    # Process each file
+    for input_file in txt_files:
+        face_culling_times, chunk_constructor_times = clean_and_parse_data(input_file)
+        write_statistics_to_log(input_file, face_culling_times, chunk_constructor_times)
+        create_visualization_suite(input_file, face_culling_times, chunk_constructor_times)
+    
+    create_comparison_plots(directory)
 
-write_statistics_to_log(input_file, face_culling_times, chunk_constructor_times)
-create_visualization_suite(input_file, face_culling_times, chunk_constructor_times)
+directory = 'data/chunk_gen'
+process_all_chunk_gen_files(directory)

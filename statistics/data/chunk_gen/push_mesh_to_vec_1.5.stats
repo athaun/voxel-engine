@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen\push_mesh_to_vec_1.5.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 12159.09
+median: 11560.20
+std_dev: 4826.61
+min: 0.00
+max: 19996.20
+count: 317.00
+95th_percentile: 18852.78
+99th_percentile: 19527.82
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 12165.89
+median: 11597.70
+std_dev: 4814.74
+min: 117.26
+max: 20095.40
+count: 311.00
+95th_percentile: 18897.85
+99th_percentile: 19606.37
+
+Generated on: 2024-11-09 16:55:43
+
+SUMMARY (for parsing):
+face_culling_mean:12159.09,face_culling_median:11560.20,face_culling_95th:18852.78,chunk_constructor_mean:12165.89,chunk_constructor_median:11597.70,chunk_constructor_95th:18897.85
