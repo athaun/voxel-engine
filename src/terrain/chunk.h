@@ -30,7 +30,6 @@ private:
     voxel::Material get_material(int x, int y, int z);
 
     int global_x, global_y, global_z;
-    // std::array<std::array<std::array<Voxel, CHUNK_HEIGHT>, CHUNK_DEPTH>, CHUNK_WIDTH> voxels;
     std::array<Voxel, CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH> voxels;
     Render::Batch* batch;
 };

@@ -14,6 +14,8 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
 
     int terrain_heights[CHUNK_WIDTH][CHUNK_DEPTH] = {};
 
+    size_t estimated_mesh_count = 0;
+
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             int terrain_height = terrain(global_x + x, 0, global_z + z);
@@ -22,6 +24,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                 Voxel v;
                 v.material = (terrain_height > y ? voxel::Material::STONE : voxel::Material::AIR);
                 set_voxel(x, y, z, v);
+                estimated_mesh_count++;
             }
 
             terrain_heights[x][z] = terrain_height;
@@ -30,22 +33,31 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     } 
 
     uint8_t used_faces = 0b00000000;
+    std::vector<Render::Mesh> mesh_buffer;
+    mesh_buffer.reserve(estimated_mesh_count); // Prevent reallocations
 
     ScopedTimer t1("Face culling");
+
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             for (int y = global_y * CHUNK_HEIGHT; y < (global_y * CHUNK_HEIGHT) + CHUNK_HEIGHT && y < terrain_heights[x][z]; y++) {
                 
-                used_faces = get_visible_faces(x, y, z);
-                
-                Render::Mesh c = Render::cube(used_faces);
+                uint8_t used_faces = get_visible_faces(x, y, z);
                 
                 if (used_faces != 0) {
-                    batch->push_mesh(Render::transform_mesh(c, global_x + x, y, global_z + z));
+                    // Transform and store the mesh in the buffer
+                    Render::Mesh c = Render::transform_mesh(Render::cube(used_faces), global_x + x, y, global_z + z);
+                    mesh_buffer.push_back(c);
                 }
             }
         }
     }
+
+    // Push the entire buffer of meshes at once to the batch
+    // for (auto& mesh : mesh_buffer) {
+    //     batch->push_mesh(mesh);
+    // }
+    batch->push_mesh_buffer(mesh_buffer);
 }
 
 inline bool Chunk::is_empty(int x, int y, int z) {
