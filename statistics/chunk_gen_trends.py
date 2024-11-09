@@ -111,8 +111,8 @@ def extract_times_from_log(file_path):
 
 #     # plt.show()
 
-#     # Write statistics summary to trends.log
-#     stats_filename = os.path.join(directory, "trends.log")
+#     # Write statistics summary to trends.txt
+#     stats_filename = os.path.join(directory, "trends.txt")
 #     with open(stats_filename, 'w') as f:
 #         f.write("\nChunk Generation Time Summary\n")
 #         f.write("-" * 80 + "\n")
@@ -188,8 +188,8 @@ def create_comparison_plots(directory):
 
     # plt.show()
 
-    # Write statistics summary to trends.log
-    stats_filename = os.path.join(directory, "trends.log")
+    # Write statistics summary to trends.txt
+    stats_filename = os.path.join(directory, "trends.txt")
     with open(stats_filename, 'w') as f:
         f.write("\nChunk Generation Time Summary\n")
         f.write("-" * 80 + "\n")
