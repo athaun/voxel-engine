@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
     // Initialize the chunk manager
     ChunkManager::init();
-    bx::Vec3 lightDirection(1.0f, 0.0f, 0.0f);
+    bx::Vec3 lightDirection(0.0f, -1.0f, 0.0f);
     u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
 
 
@@ -250,15 +250,15 @@ int main(int argc, char** argv) {
                 bx::mtxProj(proj, 80.0f, float(Window::width) / float(Window::height), 0.1f, 2000.0f, bgfx::getCaps()->homogeneousDepth);
                 bgfx::setViewTransform(0, view, proj);
 
-                // Update light direction to create an orbiting effect
-                angle += orbitSpeed; // Increment angle
-                float lightX = 0.0f; // Calculate X position
-                float lightY = orbitRadius * cos(angle); // Calculate Y position
-                float lightZ = orbitRadius * sin(angle); // Calculate Z position
+            //     // Update light direction to create an orbiting effect
+            //     angle += orbitSpeed; // Increment angle
+            //     float lightX = 0.0f; // Calculate X position
+            //     float lightY = orbitRadius * cos(angle); // Calculate Y position
+            //     float lightZ = orbitRadius * sin(angle); // Calculate Z position
             
 
-                bx::Vec3 lightDirection(-lightX, -lightY, -lightZ); // Create the new light direction vector
-                bgfx::setUniform(u_lightDirection, &lightDirection);  // Set the uniform value for lightDirection vector
+            //     bx::Vec3 lightDirection(-lightX, -lightY, -lightZ); // Create the new light direction vector
+            //     bgfx::setUniform(u_lightDirection, &lightDirection);  // Set the uniform value for lightDirection vector
             }
         }
 

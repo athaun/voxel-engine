@@ -65,6 +65,41 @@ namespace Render {
         return true;
     }
 
+        bool Batch::push_mesh_buffer(const std::vector<Render::Mesh>& meshes) {
+        size_t total_vertices = used_vertices;
+        size_t total_indices = used_indices;
+
+        // Calculate total vertices and indices required
+        for (const auto& mesh : meshes) {
+            total_vertices += mesh.vertices.size();
+            total_indices += mesh.vertex_indices.size();
+        }
+
+        // Check if they fit
+        if (total_vertices > max_vertices || total_indices > max_indices) {
+            return false; // Not enough space in the batch
+        }
+
+        // Update buffers in bulk
+        for (const auto& mesh : meshes) {
+            // Adjust indices to account for existing vertices
+            std::vector<Index> adjusted_indices = mesh.vertex_indices;
+            for (size_t i = 0; i < adjusted_indices.size(); ++i) {
+                adjusted_indices[i] += used_vertices;
+            }
+
+            // Update vertex and index buffers
+            bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
+            bgfx::update(this->index_buffer, used_indices, bgfx::copy(adjusted_indices.data(), sizeof(Index) * adjusted_indices.size()));
+
+            // Track total used vertices and indices
+            used_vertices += mesh.vertices.size();
+            used_indices += adjusted_indices.size();
+        }
+
+        return true;
+    }
+
     bool Batch::push_triangle(Vertex v1, Vertex v2, Vertex v3) {
         if (used_vertices + 3 > max_vertices || used_indices + 3 > max_indices) {
             return false;
