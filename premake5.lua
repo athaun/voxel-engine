@@ -13,8 +13,10 @@ startproject "voxels"
 configurations { "Release", "Debug" }
 platforms { "x86", "x86_64", "arm64" }
 
+
 if os.istarget("macosx") then
-    platforms { "x86_64", "arm64" }
+    platforms { "arm64", "x86_64" }
+    defaultplatform "arm64"  -- Set arm64 as the default on macOS
 elseif os.is64bit() and not os.istarget("windows") then
     platforms "x86_64"
 else
@@ -30,19 +32,20 @@ defines "_DEBUG"
 optimize "Debug"
 symbols "On"
 
-filter "platforms:x86"
-architecture "x86"
-filter "platforms:x86_64"
-architecture "x86_64"
-filter "platforms:arm64"
-architecture "arm64"
+-- filter "platforms:x86"
+-- 	architecture "x86"
+-- filter "platforms:x86_64"
+-- 	architecture "x86_64"
+-- filter "platforms:arm64"
+-- 	architecture "arm64"
 
 filter "system:macosx"
-architecture "arm64"
-xcodebuildsettings {
-    ["MACOSX_DEPLOYMENT_TARGET"] = "10.9",
-    ["ALWAYS_SEARCH_USER_PATHS"] = "YES", -- This is the minimum version of macos we'll be able to run on
-};
+    architecture "arm64"
+    xcodebuildsettings {
+        ["MACOSX_DEPLOYMENT_TARGET"] = "10.9",
+        ["ARCHS"] = "arm64 x86_64",
+        ["ONLY_ACTIVE_ARCH"] = "YES"
+    }
 
 function setBxCompat()
 	filter "action:vs*"
@@ -87,13 +90,31 @@ function compileShaders()
         local shaderType = ""
         if string.find(shaderFile, "v_") then
             shaderType = "vertex"
-			profilePrefix = "vs_5_0"
+            if platform == "osx" then
+                profilePrefix = "metal"
+            elseif platform == "linux" then
+                profilePrefix = "spirv"
+            else
+                profilePrefix = "vs_5_0"
+            end
         elseif string.find(shaderFile, "f_") then
             shaderType = "fragment"
-			profilePrefix = "ps_5_0"
+            if platform == "osx" then
+                profilePrefix = "metal"
+            elseif platform == "linux" then
+                profilePrefix = "spirv"
+            else
+                profilePrefix = "ps_5_0"
+            end
         elseif string.find(shaderFile, "c_") then
             shaderType = "compute"
-			profilePrefix = "cs_5_0"
+            if platform == "osx" then
+                profilePrefix = "metal"
+            elseif platform == "linux" then
+                profilePrefix = "spirv"
+            else
+                profilePrefix = "cs_5_0"
+            end
         end
 
 		-- Compile the shader then output the binary to the output directory
@@ -130,9 +151,12 @@ project "voxels"
 		path.join(BIMG_DIR, "include"),
 		path.join(BIMG_DIR, "3rdparty/stb"),
 	}
-	links { "bgfx", "bimg", "bx", "glfw" }
-	filter "system:linux" links { "dl", "GL", "pthread", "X11" }
-	filter "system:macosx" links { "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
+	links { "bgfx", "bimg", "bx", "glfw3" }
+
+	filter "system:linux" 
+		links { "dl", "GL", "pthread", "X11" }
+	filter "system:macosx"
+		links { "glfw3", "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
 	filter "system:windows" 
         links { "gdi32", "kernel32", "psapi" }
 	setBxCompat()
@@ -289,13 +313,13 @@ project "glfw"
 			path.join(GLFW_DIR, "src/nsgl_context.h"),
 			path.join(GLFW_DIR, "src/egl_context.h"),
 			path.join(GLFW_DIR, "src/osmesa_context.h"),
-
-    path.join(GLFW_DIR, "src/posix_thread.c"),
-    path.join(GLFW_DIR, "src/nsgl_context.m"),
-    path.join(GLFW_DIR, "src/egl_context.c"),
-    path.join(GLFW_DIR, "src/nsgl_context.m"),
-    path.join(GLFW_DIR, "src/osmesa_context.c"),
-}
+			
+			path.join(GLFW_DIR, "src/posix_thread.c"),
+			path.join(GLFW_DIR, "src/nsgl_context.m"),
+			path.join(GLFW_DIR, "src/egl_context.c"),
+			path.join(GLFW_DIR, "src/nsgl_context.m"),
+			path.join(GLFW_DIR, "src/osmesa_context.c"),
+		}
 
 filter "action:vs*"
 defines "_CRT_SECURE_NO_WARNINGS"

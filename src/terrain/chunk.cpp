@@ -4,10 +4,9 @@
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
-    static int vertex_count = chunk_volume * 8;
+    static int vertex_count = chunk_volume * 12;
     static int index_count = chunk_volume * 36;
     batch = new Render::Batch(vertex_count, index_count, "cubes");
-
 
     int terrain_heights[CHUNK_WIDTH][CHUNK_DEPTH] = {};
 
@@ -31,7 +30,9 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                 Render::Mesh c = Render::cube(used_faces);
 
                 if (used_faces != 0) {
-                    batch->push_mesh(Render::transform_mesh(c, global_x + x, y, global_z + z));
+                    if (!batch->push_mesh(Render::transform_mesh(c, global_x + x, y, global_z + z))) {
+                        Log::error("Failed to push mesh to batch");
+                    }
                 }
             }
         }

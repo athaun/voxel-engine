@@ -46,7 +46,6 @@ namespace ChunkManager {
     }
 
     void chunk_circle(int x, int z, int radius) {
-        // Build chunks around the player
         for (int dx = -radius; dx <= radius; ++dx) {
             for (int dz = -radius; dz <= radius; ++dz) {
                 if (dx * dx + dz * dz <= radius * radius) {
@@ -56,8 +55,16 @@ namespace ChunkManager {
         }
     }
 
+    void chunk_square(int x, int z, int size) {
+        for (int dx = -size / 2; dx < size / 2; ++dx) {
+            for (int dz = -size / 2; dz < size / 2; ++dz) {
+                build_chunk(x + dx, 0, z + dz);
+            }
+        }
+    }
+
     void init() {
-        chunk_circle(0, 0, 10);
+        chunk_square(0, 0, 7);
     }
 
     void update() {
@@ -80,6 +87,13 @@ namespace ChunkManager {
             for (auto& pending : ready_chunks) {
             chunks[pending.coords] = pending.future.get();
             }
+        }
+    }
+
+    void destroy() {
+        std::lock_guard<std::mutex> lock(chunks_mutex);
+        for (auto& [_, chunk] : chunks) {
+            delete chunk;
         }
     }
 

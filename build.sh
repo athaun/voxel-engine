@@ -37,7 +37,7 @@ Compile() {
 Run() {
     Compile
     # ./build/gmake2/bin/x86/Release/voxels
-    ./build/"$buildSystem"/bin/x86/"$configuration"/voxels
+    ./build/"$buildSystem"/bin/arm64/Release/voxels
 }
 
 # Default values

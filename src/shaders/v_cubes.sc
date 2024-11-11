@@ -9,5 +9,5 @@ void main()
 {
     gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
     v_texcoord0 = a_texcoord0;
-    v_normal = (a_normal); // Pass the normal to the fragment shader
+    v_normal = (a_normal);
 }

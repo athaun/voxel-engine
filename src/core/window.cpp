@@ -41,19 +41,25 @@ namespace Window {
         // Disable cursor
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-        // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
-        // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
-        bgfxInit.type = bgfx::RendererType::Count;
+        // bgfxInit.type = bgfx::RendererType::Count;
         bgfxInit.resolution.width = 1600;
         bgfxInit.resolution.height = 900;
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
         bgfxInit.debug = BGFX_DEBUG_IFH;
+
+        #if BX_PLATFORM_OSX
+            bgfxInit.type = bgfx::RendererType::OpenGL;
+        #else
+            bgfxInit.type = bgfx::RendererType::Count;
+        #endif
 
         bgfxInit.platformData.ndt = nullptr;
         #if BX_PLATFORM_WINDOWS

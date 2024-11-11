@@ -1,6 +1,7 @@
 #include "batch.h"
 #include "texture.h"
 #include "../core/Log.h"
+#include <bx/bx.h>
 
 namespace Render {
     Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name) {
@@ -12,11 +13,18 @@ namespace Render {
         // Create dynamic vertex and index buffers to store the batch data
         this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
         this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
+
+        uint32_t samplerFlags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | 
+                           BGFX_SAMPLER_MIN_ANISOTROPIC | BGFX_SAMPLER_MAG_ANISOTROPIC;
+
         // Load texture (solid color or actual image)
-        this->grassTexture = loadTexture("src/static/grass.jpg");
+        grassTexture = load_texture("src/static/grass.jpg", samplerFlags);
+
         // Create the shader program and uniform only once
         this->shader_program = load_shader(shader_name);
-        this->s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
+        // this->s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
+        this->s_texture = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);  // Changed name to match shader
+
         this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
         this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
@@ -33,7 +41,7 @@ namespace Render {
 
     void Batch::submit() {
         // Bind the texture before rendering
-        bgfx::setTexture(0, this->s_texture, this->grassTexture);
+        bgfx::setTexture(0, this->s_texture, grassTexture);
         
         // Set the ambient color
         float ambientColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f }; // Low intensity gray
@@ -48,6 +56,14 @@ namespace Render {
 
     bool Batch::push_mesh (Mesh mesh) {
         if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertex_indices.size() > max_indices)) {
+            Log::error("Failed to push mesh to batch: not enough space");
+            if (used_vertices + mesh.vertices.size() > max_vertices) {
+                Log::error("Used vertices: " + std::to_string(used_vertices) + " + " + std::to_string(mesh.vertices.size()) + " > " + std::to_string(max_vertices));
+            }
+
+            if (used_indices + mesh.vertex_indices.size() > max_indices) {
+                Log::error("Used indices: " + std::to_string(used_indices) + " + " + std::to_string(mesh.vertex_indices.size()) + " > " + std::to_string(max_indices));
+            }
             return false;
         }
         
@@ -67,11 +83,12 @@ namespace Render {
 
     bool Batch::push_triangle(Vertex v1, Vertex v2, Vertex v3) {
         if (used_vertices + 3 > max_vertices || used_indices + 3 > max_indices) {
+            Log::error("Failed to push triangle to batch: not enough space");
             return false;
         }
 
         Vertex vertices[] = { v1, v2, v3 };
-        uint16_t indices[] = { used_vertices, used_vertices + 1, used_vertices + 2 };
+        Index indices[] = { used_vertices, used_vertices + 1, used_vertices + 2 };
 
         bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(vertices, sizeof(vertices)));
         bgfx::update(this->index_buffer, used_indices, bgfx::copy(indices, sizeof(indices)));
@@ -138,7 +155,12 @@ namespace Render {
             return bgfx::ProgramHandle();
         }
 
-        return bgfx::createProgram(vertex_shader, fragment_shader, false);
+        auto program = bgfx::createProgram(vertex_shader, fragment_shader, false);
+
+        bgfx::destroy(vertex_shader);
+        bgfx::destroy(fragment_shader);
+
+        return program;
     }
 
 }  // namespace Render

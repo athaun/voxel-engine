@@ -277,6 +277,9 @@ int main(int argc, char** argv) {
 
         Window::end_update();
     }
+
+    bgfx::destroy(u_lightDirection);
+    ChunkManager::destroy();
     Core::shutdown();
     return 0;
 }
