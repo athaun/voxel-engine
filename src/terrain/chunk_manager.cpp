@@ -57,7 +57,7 @@ namespace ChunkManager {
     }
 
     void init() {
-        chunk_circle(0, 0, 2);
+        chunk_circle(0, 0, 15);
     }
 
     void update() {

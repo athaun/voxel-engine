@@ -33,6 +33,9 @@ public:
     }
 
 private:
+    // Add terrain height buffer to store terrain height information about neighboring blocks outside chunk boundaries.
+    static const int BUFFER_SIZE = 2;
+    int terrain_heights[CHUNK_WIDTH + BUFFER_SIZE][CHUNK_DEPTH + BUFFER_SIZE];
     double terrain(int x, int y, int z);
     bool is_empty(int x, int y, int z);
     uint8_t get_visible_faces(int x, int y, int z);
