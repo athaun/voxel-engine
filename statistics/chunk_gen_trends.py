@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.interpolate import make_interp_spline
+
 
 def extract_times_from_log(file_path):
     """Extract all individual times from the original log file"""
@@ -160,18 +162,53 @@ def create_comparison_plots(directory):
                             'percentile_95': percentile_95
                         }
     
+    # # Sort all_times by median values in descending order
+    # sorted_all_times = dict(sorted(all_times.items(), key=lambda item: np.median(item[1]), reverse=True))
+    
+    # fig, ax = plt.subplots(figsize=(15, 8))
+    
+    # # Box plot comparison
+    # data = [times for times in sorted_all_times.values()]
+    # labels = list(sorted_all_times.keys())
+    
+    # bp = ax.boxplot(data, labels=labels, patch_artist=True)
+    
+    # # Customize box plot colors
+    # for box in bp['boxes']:
+    #     box.set(facecolor='lightblue', alpha=0.7)
+    
+    # ax.set_title('Distribution Comparison Across Test Runs')
+    # ax.set_xlabel('Test Runs')
+    # ax.set_ylabel('Time (ms)')
+    # ax.grid(True, alpha=0.3)
+    # plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    
+    # plt.tight_layout()
+
+    # output_filename = f"{directory}/trends.png"
+    # plt.savefig(output_filename)
+
+    # # plt.show()
+
+    # # Write statistics summary to trends.txt
+    # stats_filename = os.path.join(directory, "trends.txt")
+    # with open(stats_filename, 'w') as f:
+    #     f.write("\nChunk Generation Time Summary\n")
+    #     f.write("-" * 80 + "\n")
+    #     f.write(f"{'File':<20} {'Mean':>10} {'Median':>10} {'95th %':>10} {'Sample Size':>12}\n")
+    #     f.write("-" * 80 + "\n")
+    #     for name, times in sorted_all_times.items():
+    #         f.write(f"{name:<20} {np.mean(times):>10.2f} {np.median(times):>10.2f} {np.percentile(times, 95):>10.2f} {len(times):>12}\n")
     # Sort all_times by median values in descending order
     sorted_all_times = dict(sorted(all_times.items(), key=lambda item: np.median(item[1]), reverse=True))
     
-    fig, ax = plt.subplots(figsize=(15, 8))
-    
-    # Box plot comparison
+    # Plot 1: Box plot comparison
+    fig, ax = plt.subplots(figsize=(20, 11))
     data = [times for times in sorted_all_times.values()]
     labels = list(sorted_all_times.keys())
     
     bp = ax.boxplot(data, labels=labels, patch_artist=True)
     
-    # Customize box plot colors
     for box in bp['boxes']:
         box.set(facecolor='lightblue', alpha=0.7)
     
@@ -182,11 +219,39 @@ def create_comparison_plots(directory):
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
     
     plt.tight_layout()
-
-    output_filename = f"{directory}/trends.png"
+    output_filename = f"{directory}/trends_boxplot.png"
     plt.savefig(output_filename)
+    plt.close(fig)
+    
+    # Plot 2: Scatter plot of times across all test runs
+    fig, ax = plt.subplots(figsize=(15, 8))
+    for name, times in sorted_all_times.items():
+        ax.scatter([name] * len(times), times, alpha=0.5, label=name)
+    
+    ax.set_title('Scatter Plot of Chunk Constructor Times')
+    ax.set_xlabel('Test Runs')
+    ax.set_ylabel('Time (ms)')
+    ax.grid(True, alpha=0.3)
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    
+    plt.tight_layout()
+    output_filename = f"{directory}/trends_scatter_plot.png"
+    plt.savefig(output_filename)
+    plt.close(fig)
 
-    # plt.show()
+    # Plot 3: Violin plot
+    fig, ax = plt.subplots(figsize=(15, 8))
+    ax.violinplot(data, showmeans=True, showmedians=True)
+    ax.set_title('Violin Plot of Chunk Generation Times')
+    ax.set_xlabel('Test Runs')
+    ax.set_ylabel('Time (ms)')
+    # Set the x-tick positions and labels
+    ax.set_xticks(np.arange(1, len(data) + 1))  # Positions for each violin plot
+    ax.set_xticklabels(list(sorted_all_times.keys()), rotation=45, ha='right')
+    plt.tight_layout()
+    output_filename = f"{directory}/trends_violin_plot.png"
+    plt.savefig(output_filename)
+    plt.close(fig)
 
     # Write statistics summary to trends.txt
     stats_filename = os.path.join(directory, "trends.txt")
@@ -197,6 +262,7 @@ def create_comparison_plots(directory):
         f.write("-" * 80 + "\n")
         for name, times in sorted_all_times.items():
             f.write(f"{name:<20} {np.mean(times):>10.2f} {np.median(times):>10.2f} {np.percentile(times, 95):>10.2f} {len(times):>12}\n")
+
 
 
 # Usage

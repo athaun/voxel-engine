@@ -29,17 +29,9 @@ def clean_and_parse_data(input_file):
 
 def create_visualization_suite(input_file, face_culling_times, chunk_constructor_times):
     # Create a figure with 1x2 subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-    
-    # 1. Box Plot
-    data = [face_culling_times, chunk_constructor_times]
-    ax1.boxplot(data, labels=['Face Culling', 'Chunk Constructor'])
-    ax1.set_title('Box Plot of Chunk Generation Times')
-    ax1.set_ylabel('Time (ms)')
-    ax1.grid(True, alpha=0.3)
+    fig, ax2 = plt.subplots(1, figsize=(15, 6))
     
     # 2. KDE (Kernel Density Estimation) Plot - smooth density
-    sns.kdeplot(data=face_culling_times, label='Face Culling', ax=ax2, fill=True)
     sns.kdeplot(data=chunk_constructor_times, label='Chunk Constructor', ax=ax2, fill=True)
     ax2.set_title('Density Distribution of Chunk Generation Times')
     ax2.set_xlabel('Time (ms)')

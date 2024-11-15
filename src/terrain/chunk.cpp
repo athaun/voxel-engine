@@ -28,7 +28,6 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
             }
 
             terrain_heights[x][z] = terrain_height;
-
         }
     } 
 
