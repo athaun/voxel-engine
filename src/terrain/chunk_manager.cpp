@@ -9,6 +9,14 @@
 #include <semaphore>
 
 namespace ChunkManager {
+    struct PendingChunk {
+        std::pair<int, int> coords;
+        std::future<Chunk*> future;
+        
+        PendingChunk(std::pair<int, int> c, std::future<Chunk*>&& f) 
+            : coords(c), future(std::move(f)) {}
+    };
+
     struct pair_hash {
         template <class T1, class T2>
         std::size_t operator()(const std::pair<T1, T2>& p) const {
@@ -18,23 +26,12 @@ namespace ChunkManager {
         }
     };
 
-    static constexpr size_t MAX_CHUNK_UPDATES_PER_FRAME = 2;
-
-    // Limit concurrent chunk generation threads   
     const int MAX_CONCURRENT_CHUNKS = std::thread::hardware_concurrency() - 1;
 
     std::counting_semaphore chunk_semaphore{MAX_CONCURRENT_CHUNKS};
+    std::shared_mutex chunks_mutex;
 
     std::unordered_map<std::pair<int, int>, Chunk*, pair_hash> chunks;
-    std::shared_mutex chunks_mutex;
-    
-    struct PendingChunk {
-        std::pair<int, int> coords;
-        std::future<Chunk*> future;
-        
-        PendingChunk(std::pair<int, int> c, std::future<Chunk*>&& f) 
-            : coords(c), future(std::move(f)) {}
-    };
     std::vector<PendingChunk> pending_chunks;
     
     void build_chunk(int x, int y, int z) {
@@ -53,7 +50,6 @@ namespace ChunkManager {
             return chunk;
         };
         
-        // Launch async task with semaphore control
         auto future = std::async(std::launch::async, chunk_task);
 
         pending_chunks.emplace_back(std::make_pair(x, z), std::move(future));
@@ -97,7 +93,7 @@ namespace ChunkManager {
         auto it = pending_chunks.begin();
         size_t updates = 0;
         
-        while (it != pending_chunks.end() && updates < MAX_CHUNK_UPDATES_PER_FRAME) {
+        while (it != pending_chunks.end()) {
             if (it->future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                 ready_chunks.push_back(std::move(*it));
                 it = pending_chunks.erase(it);
@@ -115,6 +111,19 @@ namespace ChunkManager {
                 chunks[pending.coords] = pending.future.get();
             }
         }
+    }
+
+    void cleanup() {
+        std::unique_lock lock(chunks_mutex);
+
+        for (auto& [coords, chunk] : chunks) {
+            delete chunk;
+        }
+
+        chunks.clear();
+
+        // Should probably cleanup pending chunk threads, but it caused the program to hang which is annoying
+        // And I know the OS will do it for me so...
     }
 
     void render() {

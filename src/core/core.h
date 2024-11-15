@@ -5,7 +5,7 @@
 #include <bgfx/platform.h>
 
 namespace Core {
-    void init();
-    void run(void (*user_function)());
-    void shutdown();
+    void init(void (*user_init)());
+    void run(void (*user_update)());
+    void shutdown(void (*user_shutdown)());
 }
