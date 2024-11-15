@@ -4,7 +4,7 @@
 #include "../core/timer.h"
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
-    ScopedTimer t("Chunk constructor");
+    // ScopedTimer t("Chunk constructor");
 
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
@@ -35,7 +35,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     std::vector<Render::Mesh> mesh_buffer;
     mesh_buffer.reserve(estimated_mesh_count); // Prevent reallocations
 
-    ScopedTimer t1("Face culling");
+    // ScopedTimer t1("Face culling");
 
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
@@ -53,9 +53,6 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     }
 
     // Push the entire buffer of meshes at once to the batch
-    // for (auto& mesh : mesh_buffer) {
-    //     batch->push_mesh(mesh);
-    // }
     batch->push_mesh_buffer(mesh_buffer);
 }
 

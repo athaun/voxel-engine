@@ -5,6 +5,8 @@
 #include <mutex>
 #include <queue>
 #include <iostream>
+#include <shared_mutex>
+#include <semaphore>
 
 namespace ChunkManager {
     struct pair_hash {
@@ -16,8 +18,15 @@ namespace ChunkManager {
         }
     };
 
+    static constexpr size_t MAX_CHUNK_UPDATES_PER_FRAME = 2;
+
+    // Limit concurrent chunk generation threads   
+    const int MAX_CONCURRENT_CHUNKS = std::thread::hardware_concurrency() - 1;
+
+    std::counting_semaphore chunk_semaphore{MAX_CONCURRENT_CHUNKS};
+
     std::unordered_map<std::pair<int, int>, Chunk*, pair_hash> chunks;
-    std::mutex chunks_mutex;
+    std::shared_mutex chunks_mutex;
     
     struct PendingChunk {
         std::pair<int, int> coords;
@@ -29,65 +38,89 @@ namespace ChunkManager {
     std::vector<PendingChunk> pending_chunks;
     
     void build_chunk(int x, int y, int z) {
-        // Check if chunk already exists
         {
-            std::lock_guard<std::mutex> lock(chunks_mutex);
+            std::unique_lock<std::shared_mutex> write_lock(chunks_mutex);
             if (chunks.find(std::make_pair(x, z)) != chunks.end()) {
                 return;
             }
         }
+
+        // Create a task that acquires and releases the semaphore
+        auto chunk_task = [x, y, z]() {
+            ChunkManager::chunk_semaphore.acquire();  // Wait for available slot
+            auto chunk = new Chunk(x, y, z);
+            ChunkManager::chunk_semaphore.release();  // Release slot when done
+            return chunk;
+        };
         
-        // Launch async task
-        auto future = std::async(std::launch::async, [x, y, z]() {
-            return new Chunk(x, y, z);
-        });
-        
+        // Launch async task with semaphore control
+        auto future = std::async(std::launch::async, chunk_task);
+
         pending_chunks.emplace_back(std::make_pair(x, z), std::move(future));
     }
 
     void chunk_circle(int x, int z, int radius) {
-        // Build chunks around the player
+        // Build chunks in spiral pattern from center outward for better loading pattern
+        std::vector<std::pair<int, int>> chunk_positions;
+        
         for (int dx = -radius; dx <= radius; ++dx) {
             for (int dz = -radius; dz <= radius; ++dz) {
                 if (dx * dx + dz * dz <= radius * radius) {
-                    build_chunk(x + dx, 0, z + dz);
+                    // Calculate distance from center
+                    float dist = std::sqrt(dx * dx + dz * dz);
+                    chunk_positions.push_back({dx, dz});
                 }
             }
+        }
+        
+        // Sort by distance from center
+        std::sort(chunk_positions.begin(), chunk_positions.end(),
+            [](const auto& a, const auto& b) {
+                return (a.first * a.first + a.second * a.second) <
+                       (b.first * b.first + b.second * b.second);
+            });
+            
+        // Build chunks in order
+        for (const auto& [dx, dz] : chunk_positions) {
+            build_chunk(x + dx, 0, z + dz);
         }
     }
 
     void init() {
         chunk_circle(0, 0, 10);
+        // 20 breaks it :)
     }
-
+    
     void update() {
-        // Check for completed chunks without blocking
         std::vector<PendingChunk> ready_chunks;
+            
+        auto it = pending_chunks.begin();
+        size_t updates = 0;
         
-        // Move ready chunks to a temporary vector
-        for (auto it = pending_chunks.begin(); it != pending_chunks.end();) {
+        while (it != pending_chunks.end() && updates < MAX_CHUNK_UPDATES_PER_FRAME) {
             if (it->future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                 ready_chunks.push_back(std::move(*it));
                 it = pending_chunks.erase(it);
+                updates++;
             } else {
                 ++it;
             }
         }
+        
 
-        // Insert ready chunks into the chunks map
-        {
-            std::lock_guard<std::mutex> lock(chunks_mutex);
+        // Process ready chunks
+        if (!ready_chunks.empty()) {
+            std::unique_lock<std::shared_mutex> lock(chunks_mutex);
             for (auto& pending : ready_chunks) {
-            chunks[pending.coords] = pending.future.get();
+                chunks[pending.coords] = pending.future.get();
             }
         }
     }
 
     void render() {
-        std::lock_guard<std::mutex> lock(chunks_mutex);
-        for (auto& [_, chunk] : chunks) {
+        std::shared_lock<std::shared_mutex> lock(chunks_mutex);
+        for (const auto& [_, chunk] : chunks) {
             chunk->submit_batch();
         }
     }
-
 }
