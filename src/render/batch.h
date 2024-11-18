@@ -38,7 +38,7 @@ class Batch {
 
     void submit();
 
-    bool push_mesh (Mesh mesh);
+    bool push_mesh(Mesh mesh);
     bool push_mesh_buffer(const std::vector<Render::Mesh>& meshes);
 
     bool push_triangle(Vertex v1, Vertex v2, Vertex v3);

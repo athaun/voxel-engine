@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen/no_transform.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 12946.34
+median: 12560.35
+std_dev: 10721.34
+min: 0.00
+max: 33852.70
+count: 38.00
+95th_percentile: 32993.33
+99th_percentile: 33686.38
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 13065.48
+median: 12767.50
+std_dev: 10697.47
+min: 164.33
+max: 33901.40
+count: 38.00
+95th_percentile: 33083.93
+99th_percentile: 33797.36
+
+Generated on: 2024-11-08 19:16:32
+
+SUMMARY (for parsing):
+face_culling_mean:12946.34,face_culling_median:12560.35,face_culling_95th:32993.33,chunk_constructor_mean:13065.48,chunk_constructor_median:12767.50,chunk_constructor_95th:33083.93

@@ -1,10 +1,13 @@
 #include "chunk.h"
 #include "../core/Log.h"
 #include "../noise/OpenSimplexNoise.h"
+#include "../core/timer.h"
 
 
 // In chunk.cpp:
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
+    // ScopedTimer t("Chunk constructor");
+
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
     static int index_count = chunk_volume * 36;
@@ -70,6 +73,8 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
             }
         }
     }
+
+    // Push the entire buffer of meshes at once to the batch
     batch->push_mesh_buffer(mesh_buffer);
 }
 
@@ -279,14 +284,26 @@ void Chunk::submit_batch() {
     batch->submit();
 }
 
-Voxel Chunk::get_voxel(int x, int y, int z) const {
-    return voxels[x][z][y];
+Voxel Chunk::get_voxel(int x, int y, int z) {
+    return voxels[voxel_index(x, y, z)];
 }
 
 void Chunk::set_voxel(int x, int y, int z, Voxel voxel) {
-    voxels[x][z][y] = voxel;
+    voxels[voxel_index(x, y, z)] = voxel;
 }
 
-std::pair<int, int> Chunk::get_position() const {
+inline size_t Chunk::voxel_index(int x, int y, int z) {
+    size_t x_i = x % CHUNK_WIDTH;
+    size_t y_i = y % CHUNK_HEIGHT;
+    size_t z_i = z % CHUNK_DEPTH;
+
+    return x_i + (y_i * CHUNK_WIDTH) + (z_i * CHUNK_WIDTH * CHUNK_HEIGHT);
+}
+
+std::pair<int, int> Chunk::get_position() {
     return std::make_pair(global_x, global_z);
+}
+
+void Chunk::set_neighbor(int direction, Chunk* neighbor) {
+    neighbors[direction] = neighbor;
 }
