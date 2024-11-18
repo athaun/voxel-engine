@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen\semaphore_counter_gen_limit.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 337.32
+median: 345.93
+std_dev: 136.54
+min: 0.00
+max: 617.34
+count: 614.00
+95th_percentile: 550.14
+99th_percentile: 592.19
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 402.75
+median: 411.41
+std_dev: 155.25
+min: 26.69
+max: 725.80
+count: 630.00
+95th_percentile: 646.47
+99th_percentile: 685.28
+
+Generated on: 2024-11-09 20:07:03
+
+SUMMARY (for parsing):
+face_culling_mean:337.32,face_culling_median:345.93,face_culling_95th:550.14,chunk_constructor_mean:402.75,chunk_constructor_median:411.41,chunk_constructor_95th:646.47

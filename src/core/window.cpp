@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <bx/platform.h>
 #include <iostream>
+#include <chrono>
 #if BX_PLATFORM_LINUX
 #define GLFW_EXPOSE_NATIVE_X11
 #elif BX_PLATFORM_WINDOWS
@@ -18,8 +19,10 @@
 namespace Window {
     static GLFWwindow* window = nullptr;
 
-    int width = 0;
-    int height = 0;
+    int width, height;
+    float delta_time, fps;
+
+    std::chrono::steady_clock::time_point prev_time;
 
     void init() {
         // Initialize GLFW for windowing
@@ -50,7 +53,7 @@ namespace Window {
         bgfxInit.type = bgfx::RendererType::Count;
         bgfxInit.resolution.width = 1920;
         bgfxInit.resolution.height = 1080;
-        bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
+        bgfxInit.resolution.reset = BGFX_RESET_NONE;
         bgfxInit.debug = BGFX_DEBUG_IFH;
 
         bgfxInit.platformData.ndt = nullptr;
@@ -72,25 +75,43 @@ namespace Window {
 	    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
 
         glfwGetWindowSize(window, &Window::width, &Window::height);
+
+        prev_time = std::chrono::steady_clock::now();
+        fps = 0;
     }
 
     void shutdown() {
         glfwDestroyWindow(window);
         glfwTerminate();
+        // bgfx::shutdown(); // TODO: should come back to this
+    }
 
-        // bgfx::shutdown(); // should come back to this
+    void exit() {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
     void begin_update() {
+        // Calculate delta time
+        std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+        std::chrono::duration<float> delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(current_time - prev_time);
+        prev_time = current_time;
+
+        static int frame_count = 0;
+        static std::chrono::duration<float> timer(0.0f);
+
+        timer += delta_time;
+        frame_count++;
+
+        // Update FPS every second
+        if (timer >= std::chrono::seconds(1)) {
+            fps = frame_count;
+            timer = std::chrono::duration<float>(0.0f);
+            frame_count = 0;
+        }
+
         glfwPollEvents();
 
-        // bgfx::setState(BGFX_STATE_DEFAULT | BGFX_STATE_PT_LINES);
-
-		// int oldWidth = width, oldHeight = height;
-		// glfwGetWindowSize(window, &Window::width, &Window::height);
-		// if (width != oldWidth || height != oldHeight) {
-		// 	// Resize window :o
-		// }
+		glfwGetWindowSize(window, &Window::width, &Window::height);
     }
 
     void end_update() {

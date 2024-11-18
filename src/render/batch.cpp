@@ -46,7 +46,7 @@ namespace Render {
         bgfx::submit(0, this->shader_program);
     }
 
-    bool Batch::push_mesh (Mesh mesh) {
+    bool Batch::push_mesh(Mesh mesh) {
         if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertex_indices.size() > max_indices)) {
             return false;
         }
@@ -65,40 +65,95 @@ namespace Render {
         return true;
     }
 
-        bool Batch::push_mesh_buffer(const std::vector<Render::Mesh>& meshes) {
+    bool Batch::push_mesh_buffer(const std::vector<Render::Mesh>& meshes) {
         size_t total_vertices = used_vertices;
         size_t total_indices = used_indices;
 
+        if (meshes.empty()) return true;
+
         // Calculate total vertices and indices required
+        size_t vertices_to_add = 0;
+        size_t indices_to_add = 0;
+
         for (const auto& mesh : meshes) {
-            total_vertices += mesh.vertices.size();
-            total_indices += mesh.vertex_indices.size();
+            vertices_to_add += mesh.vertices.size();
+            indices_to_add += mesh.vertex_indices.size();
         }
+
+        total_vertices += vertices_to_add;
+        total_indices += indices_to_add;
 
         // Check if they fit
         if (total_vertices > max_vertices || total_indices > max_indices) {
             return false; // Not enough space in the batch
         }
 
-        // Update buffers in bulk
+        // Pre-allocate combined vertex and index buffers
+        std::vector<Vertex> combined_vertices;
+        std::vector<Index> combined_indices;
+        combined_vertices.reserve(vertices_to_add);
+        combined_indices.reserve(indices_to_add);
+
+        // Offset indices and populate combined buffers
+        size_t current_vertex_offset = used_vertices;
         for (const auto& mesh : meshes) {
-            // Adjust indices to account for existing vertices
-            std::vector<Index> adjusted_indices = mesh.vertex_indices;
-            for (size_t i = 0; i < adjusted_indices.size(); ++i) {
-                adjusted_indices[i] += used_vertices;
+            // Append vertices
+            combined_vertices.insert(combined_vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+
+            // Append indices with offset adjustment
+            for (Index index : mesh.vertex_indices) {
+                combined_indices.push_back(index + current_vertex_offset);
             }
-
-            // Update vertex and index buffers
-            bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
-            bgfx::update(this->index_buffer, used_indices, bgfx::copy(adjusted_indices.data(), sizeof(Index) * adjusted_indices.size()));
-
-            // Track total used vertices and indices
-            used_vertices += mesh.vertices.size();
-            used_indices += adjusted_indices.size();
+            
+            current_vertex_offset += mesh.vertices.size();
         }
+
+        // Update bgfx buffers once for all combined vertices and indices
+        bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(combined_vertices.data(), sizeof(Vertex) * combined_vertices.size()));
+        bgfx::update(this->index_buffer, used_indices, bgfx::copy(combined_indices.data(), sizeof(Index) * combined_indices.size()));
+
+        // Update total used vertices and indices
+        used_vertices = total_vertices;
+        used_indices = total_indices;
 
         return true;
     }
+
+    // bool Batch::push_mesh_buffer(const std::vector<Render::Mesh>& meshes) {
+    //     size_t total_vertices = used_vertices;
+    //     size_t total_indices = used_indices;
+
+    //     // Calculate total vertices and indices required
+    //     for (const auto& mesh : meshes) {
+    //         total_vertices += mesh.vertices.size();
+    //         total_indices += mesh.vertex_indices.size();
+    //     }
+
+    //     // Check if they fit
+    //     if (total_vertices > max_vertices || total_indices > max_indices) {
+    //         return false; // Not enough space in the batch
+    //     }
+
+    //     // Update buffers in bulk
+    //     for (const auto& mesh : meshes) {
+    //         // Adjust indices to account for existing vertices
+    //         std::vector<Index> adjusted_indices = mesh.vertex_indices;
+    //         for (size_t i = 0; i < adjusted_indices.size(); ++i) {
+    //             adjusted_indices[i] += used_vertices;
+    //         }
+
+    //         // Update vertex and index buffers
+    //         bgfx::update(this->vertex_buffer, used_vertices, bgfx::copy(mesh.vertices.data(), sizeof(Vertex) * mesh.vertices.size()));
+    //         bgfx::update(this->index_buffer, used_indices, bgfx::copy(adjusted_indices.data(), sizeof(Index) * adjusted_indices.size()));
+
+    //         // Track total used vertices and indices
+    //         used_vertices += mesh.vertices.size();
+    //         used_indices += adjusted_indices.size();
+    //     }
+
+    //     return true;
+    // }
+
 
     bool Batch::push_triangle(Vertex v1, Vertex v2, Vertex v3) {
         if (used_vertices + 3 > max_vertices || used_indices + 3 > max_indices) {
