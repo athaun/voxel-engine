@@ -1,0 +1,29 @@
+Statistics for data/chunk_gen/no_push.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 4075.76
+median: 3814.72
+std_dev: 2140.90
+min: 0.01
+max: 8308.57
+count: 312.00
+95th_percentile: 7616.41
+99th_percentile: 7997.85
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 4368.72
+median: 4422.74
+std_dev: 2127.86
+min: 85.69
+max: 8495.06
+count: 311.00
+95th_percentile: 7728.07
+99th_percentile: 8244.85
+
+Generated on: 2024-11-08 19:12:50
+
+SUMMARY (for parsing):
+face_culling_mean:4075.76,face_culling_median:3814.72,face_culling_95th:7616.41,chunk_constructor_mean:4368.72,chunk_constructor_median:4422.74,chunk_constructor_95th:7728.07
