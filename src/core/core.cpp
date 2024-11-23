@@ -1,9 +1,12 @@
 #include "core.h"
 
 namespace Core {
+    Camera camera;
+    
     void init(void (*user_init)()) {
         Window::init();
         user_init();
+        camera = Camera();
     }
 
     void shutdown(void (*user_shutdown)()) {
