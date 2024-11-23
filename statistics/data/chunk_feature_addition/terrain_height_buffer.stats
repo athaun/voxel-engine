@@ -1,0 +1,29 @@
+Statistics for data/chunk_feature_addition\terrain_height_buffer.txt
+==================================================
+
+Face Culling Statistics (ms):
+------------------------------
+mean: 379.91
+median: 383.31
+std_dev: 34.53
+min: 95.51
+max: 456.23
+count: 316.00
+95th_percentile: 409.57
+99th_percentile: 445.45
+
+Chunk Constructor Statistics (ms):
+------------------------------
+mean: 410.31
+median: 414.01
+std_dev: 34.14
+min: 125.81
+max: 486.51
+count: 314.00
+95th_percentile: 437.02
+99th_percentile: 474.89
+
+Generated on: 2024-11-23 14:34:05
+
+SUMMARY (for parsing):
+face_culling_mean:379.91,face_culling_median:383.31,face_culling_95th:409.57,chunk_constructor_mean:410.31,chunk_constructor_median:414.01,chunk_constructor_95th:437.02

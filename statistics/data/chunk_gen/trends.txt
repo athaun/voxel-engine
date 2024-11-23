@@ -10,3 +10,4 @@ push_mesh_to_vec_1.5   12165.89   11597.70   18897.85          311
 push_mesh_to_vec_2      9485.81    9130.36   14406.90          313
 push_mesh_buffer_iter_2    4031.84    3909.57    7176.41          285
 semaphore_counter_gen_limit     402.75     411.41     646.47          630
+terrain_height_buffer     410.31     414.01     437.02          314
