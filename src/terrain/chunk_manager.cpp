@@ -8,7 +8,13 @@
 #include <shared_mutex>
 #include <semaphore>
 
+#include "../render/frustum.h"
+#include "../core/core.h"
+
 namespace ChunkManager {
+    
+    static Frustum current_frustum;
+
     struct PendingChunk {
         std::pair<int, int> coords;
         std::future<Chunk*> future;
@@ -127,9 +133,23 @@ namespace ChunkManager {
     }
 
     void render() {
+        // Update frustum planes
+        current_frustum.update(Core::camera.get_view(), Core::camera.get_projection());
+        
         std::shared_lock<std::shared_mutex> lock(chunks_mutex);
-        for (const auto& [_, chunk] : chunks) {
-            chunk->submit_batch();
+        for (const auto& [coords, chunk] : chunks) {
+            // Assuming each chunk is 16x16x16 units
+            float minX = coords.first * CHUNK_WIDTH;
+            float minZ = coords.second * CHUNK_DEPTH;
+            float maxX = minX + CHUNK_WIDTH;
+            float maxZ = minZ + CHUNK_DEPTH;
+            
+            float minY = 0.0f;
+            float maxY = CHUNK_HEIGHT;
+            
+            if (current_frustum.isBoxVisible(minX, minY, minZ, maxX, maxY, maxZ)) {
+                chunk->submit_batch();
+            }
         }
     }
 }
