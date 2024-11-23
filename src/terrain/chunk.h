@@ -36,10 +36,14 @@ private:
     int terrain_heights[CHUNK_WIDTH + BUFFER_SIZE][CHUNK_DEPTH + BUFFER_SIZE];
 
     size_t voxel_index(int x, int y, int z);
+    voxel::Material get_material(int x, int y, int z);
+    int buffered_terrain_height(int x, int z);
+    
     double terrain(int x, int y, int z);
     bool is_empty(int x, int y, int z);
+    bool is_above_terrain(int x, int y, int z);
+
     uint8_t get_visible_faces(int x, int y, int z);
-    voxel::Material get_material(int x, int y, int z);
     float calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
                        int corner2_x, int corner2_y, int corner2_z);
     void calculate_face_ao(int x, int y, int z, uint8_t face, float ao_values[4]);
