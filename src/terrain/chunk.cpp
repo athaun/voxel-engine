@@ -3,9 +3,8 @@
 #include "../noise/OpenSimplexNoise.h"
 #include "../core/timer.h"
 
-Chunk::Chunk(int x, int y, int z) 
-    : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
-    ScopedTimer t("Chunk constructor");
+Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
+    // ScopedTimer t("Chunk constructor");
 
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
@@ -38,7 +37,7 @@ Chunk::Chunk(int x, int y, int z)
         }
     }
 
-    ScopedTimer t1("Face culling");
+    // ScopedTimer t1("Face culling");
 
     uint8_t used_faces = 0b00000000;
     std::vector<Render::Mesh> mesh_buffer;
@@ -99,20 +98,16 @@ inline bool Chunk::is_empty(int x, int y, int z) {
     }
 
     // Inside buffer zone: compare with terrain height
-    return y >= terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
+    return y > terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
 }
 
-// 15.8s to generate radius 5 of 20x20x20 chunks with ifs
-// 18.2s-22.7s to generate radius 5 of 20x20x20 chunks using optimized booleans declarations and ifs
-// 18.9s-21.2s to generate radius 5 of 20x20x20 chunks without ifs, but with return
-// 57.7s to generate radius 5 of 20x20x20 chunks without ifs, with reference parameter
 uint8_t Chunk::get_visible_faces(int x, int y, int z) {
     uint8_t used_faces = 0b00000000;
 
-    used_faces |= (y >= buffered_terrain_height(x, z + 1)) << 0; // Front face (+Z)
-    used_faces |= (y >= buffered_terrain_height(x + 1, z)) << 1; // Right face (+X)
-    used_faces |= (y >= buffered_terrain_height(x, z - 1)) << 2; // Back face (-Z)
-    used_faces |= (y >= buffered_terrain_height(x - 1, z)) << 3; // Left face (-X)
+    used_faces |= (y > buffered_terrain_height(x, z + 1)) << 0; // Front face (+Z)
+    used_faces |= (y > buffered_terrain_height(x + 1, z)) << 1; // Right face (+X)
+    used_faces |= (y > buffered_terrain_height(x, z - 1)) << 2; // Back face (-Z)
+    used_faces |= (y > buffered_terrain_height(x - 1, z)) << 3; // Left face (-X)
     used_faces |= (y == buffered_terrain_height(x, z)) << 4; // Top face (+Y)
     used_faces |= (y == 0) << 5; // Bottom face (-Y)
 
@@ -153,36 +148,36 @@ float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int
 
 void Chunk::calculate_face_ao(int x, int y, int z, uint8_t face, float raw_values[4]) {
     /*
-            CONTEXT:
-            For a front face (+Z), looking at the face:
-            [0]----[1]    [0] = top-left vertex
-            |      |     [1] = top-right vertex
-            |      |     [2] = bottom-left vertex
-            [2]----[3]    [3] = bottom-right vertex
+        CONTEXT:
+        For a front face (+Z), looking at the face:
+        [0]----[1]    [0] = top-left vertex
+        |      |     [1] = top-right vertex
+        |      |     [2] = bottom-left vertex
+        [2]----[3]    [3] = bottom-right vertex
             
-                    
                       
-    v4 ----------- v5  +y
-    /|            /|   |
-   / |           / |   |
-v0 --+--------- v1 |   | 
- |   |    +    |   |   |
- |  v6 --------+--v7   +x
- | /           | /    /
- |/            |/    /
-v2 ------------v3   +z
+            v4 ----------- v5  +y
+            /|            /|   |
+        / |           / |   |
+        v0 --+--------- v1 |   | 
+        |   |    +    |   |   |
+        |  v6 --------+--v7   +x
+        | /           | /    /
+        |/            |/    /
+        v2 ------------v3   +z
 
         '+' is (0,0,0),the origin point
-            The parameters in calculate_ao(x, y, z, -1, 0, 1, 0, 1, 1) mean:
-            - (-1, 0, 1) = offset to check left adjacent block (C)
-            FROM THE ORIGIN: Go left on x, stay on y, go forward on z
-            This will give us the side from v0 to v2
-            - (0, 1, 1) = offset to check top adjacent block (B)
-            FROM THE ORIGIN: Stay on x, go up on y, go forward on z
-            This will give us the side from v0 to v1
 
-            Now we have our two sides for the top-left vertex, and can calculate the corner block (A)
-            This is the same process for each vertex on each face that exists.
+        The parameters in calculate_ao(x, y, z, -1, 0, 1, 0, 1, 1) mean:
+        - (-1, 0, 1) = offset to check left adjacent block (C)
+        FROM THE ORIGIN: Go left on x, stay on y, go forward on z
+        This will give us the side from v0 to v2
+        - (0, 1, 1) = offset to check top adjacent block (B)
+        FROM THE ORIGIN: Stay on x, go up on y, go forward on z
+        This will give us the side from v0 to v1
+
+        Now we have our two sides for the top-left vertex, and can calculate the corner block (A)
+        This is the same process for each vertex on each face that exists.
     */
 
     switch(face) {
@@ -260,7 +255,7 @@ double Chunk::terrain(int x, int y, int z) {
         frequency *= lacunarity;
     }
 
-    return (double)map((double)noiseValue, -1.0, 0.0, 0.0, (double)CHUNK_HEIGHT);
+    return (double)map((double)noiseValue, -1.0, 1.0, 0.0, (double)CHUNK_HEIGHT);
 }
 
 
