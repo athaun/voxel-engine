@@ -38,7 +38,7 @@ namespace Render {
         5, 4, 7,    4, 6, 7,    // Back face
         4, 0, 6,    0, 2, 6,    // Left face
         4, 5, 0,    5, 1, 0,    // Top face 
-        6, 7, 2,    7, 3, 2     // Bottom face
+        6, 2, 7,    7, 2, 3     // Bottom face
     };
 
     std::vector<Vertex> cube_vertices = {
