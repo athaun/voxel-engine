@@ -58,6 +58,7 @@ public:
     std::pair<int, int> get_position();
     void set_neighbor(int direction, Chunk* neighbor);
 
+    bool is_visible;
 private:
     // Add terrain height buffer to store terrain height information about neighboring blocks outside chunk boundaries.
     static const int BUFFER_SIZE = 2;
