@@ -2,21 +2,23 @@
 
 #include <vector>
 #include <bgfx/bgfx.h>
+#include <terrain/voxel.h>
 
 namespace Render {
 
 typedef struct Vertex {
-    float x, y, z;  // Position
-    float u, v;     // Texture coordinates
-    float nx, ny, nz; // Normal
-    float ao;
+    float x, y, z;      // Position
+    float r, g, b;      // Color
+    float nx, ny, nz;   // Normal
+    float ao;           // Ambient Occlusion
+
     static bgfx::VertexLayout init() {
         bgfx::VertexLayout layout;
         layout.begin()
             .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Float)  // RGB color
             .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::Color0, 1, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color1, 1, bgfx::AttribType::Float)  // AO
             .end();
         bgfx::createVertexLayout(layout);
         return layout;

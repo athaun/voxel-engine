@@ -2,12 +2,11 @@
 #include "../core/Log.h"
 #include "../noise/OpenSimplexNoise.h"
 #include "../core/timer.h"
+#include <algorithm>
 
 
 // In chunk.cpp:
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
-    // ScopedTimer t("Chunk constructor");
-
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
     static int vertex_count = chunk_volume * 8;
     static int index_count = chunk_volume * 36;
@@ -73,8 +72,6 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
             }
         }
     }
-
-    // Push the entire buffer of meshes at once to the batch
     batch->push_mesh_buffer(mesh_buffer);
 }
 
@@ -134,33 +131,43 @@ uint8_t Chunk::get_visible_faces(int x, int y, int z) {
 float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
                           int corner2_x, int corner2_y, int corner2_z) {
     // Check neighboring blocks
-    float side1 = !is_empty(x + corner1_x, y + corner1_y, z + corner1_z) ? 0.25f : 0.0f;
-    float side2 = !is_empty(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.25f : 0.0f;
+    float side1 = !is_empty(x + corner1_x, y + corner1_y, z + corner1_z) ? 0.18f : 0.0f;
+    float side2 = !is_empty(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.18f : 0.0f;
     
-    // Modify corner calculation to be less aggressive
+    // Check corner block
     float corner = !is_empty(x + corner1_x + corner2_x, 
                             y + corner1_y + corner2_y, 
-                            z + corner1_z + corner2_z) ? 0.15f : 0.0f;
+                            z + corner1_z + corner2_z) ? 0.05f : 0.0f;
 
     // Check diagonal-lower block
     float diagonal_lower = !is_empty(x + corner1_x + corner2_x, 
                                    y + corner1_y + corner2_y - 1, 
-                                   z + corner1_z + corner2_z) ? 0.25f : 0.0f;
+                                   z + corner1_z + corner2_z) ? 0.18f : 0.0f;
 
-    // Calculate total occlusion with weight distribution
-    float occlusion = side1 + side2;
+    // Calculate total occlusion
+    float occlusion = 0.0f;
     
-    // Only add corner and diagonal effects if they make sense geometrically
-    if (side1 == 0.0f || side2 == 0.0f) {
-        occlusion += corner;
-        // Only add diagonal-lower effect if the corner above is empty
+    // If both sides are present, maximum occlusion
+    if (side1 > 0.0f && side2 > 0.0f) {
+        occlusion = side1 + side2;
+    }
+    // If one side is present, add its occlusion plus partial corner/diagonal influence
+    else if (side1 > 0.0f || side2 > 0.0f) {
+        occlusion = std::max(side1, side2) + (corner * 0.6f);
+        // Only add diagonal if corner is empty
+        if (corner == 0.0f) {
+            occlusion += diagonal_lower * 0.25f;
+        }
+    }
+    // If no sides, use corner and diagonal
+    else {
+        occlusion = corner;
         if (corner == 0.0f) {
             occlusion += diagonal_lower;
         }
     }
 
-    // Ensure we don't over-darken
-    return std::max(0.0f, std::min(1.0f, 1.0f - occlusion));
+    return 1.0f - std::min(1.0f, occlusion);
 }
 
 void Chunk::calculate_face_ao(int x, int y, int z, uint8_t face, float raw_values[4]) {
@@ -199,10 +206,10 @@ v2 ------------v3   +z
 
     switch(face) {
         case 0: // Front face (+Z) - this one looks correct
-            raw_values[0] = calculate_ao(x, y, z, -1, 0, 1, 0, 1, 1);  // top-left
-            raw_values[1] = calculate_ao(x, y, z, 1, 0, 1, 0, 1, 1);   // top-right
-            raw_values[2] = calculate_ao(x, y, z, -1, 0, 1, 0, -1, 1); // bottom-left
-            raw_values[3] = calculate_ao(x, y, z, 1, 0, 1, 0, -1, 1);  // bottom-right
+            raw_values[0] = calculate_ao(x, y, z, -1, 0, -1, 0, 1, -1);  // top-left
+            raw_values[1] = calculate_ao(x, y, z, 1, 0, -1, 0, 1, -1);   // top-right  
+            raw_values[2] = calculate_ao(x, y, z, -1, 0, -1, 0, -1, -1); // bottom-left
+            raw_values[3] = calculate_ao(x, y, z, 1, 0, -1, 0, -1, -1);  // bottom-right
             break;
             
         case 1: // Right face (+X)

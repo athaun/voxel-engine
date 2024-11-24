@@ -1,27 +1,20 @@
-$input v_texcoord0, v_normal, v_ambient_occlusion
+$input v_color0, v_normal, v_ao
 
 #include <bgfx_shader.sh>
-#include "shaderlib.sh"
 
-SAMPLER2D(s_texColor,  0);  // Texture sampler
-uniform vec3 u_ambientColor; // Ambient light color
-uniform vec3 u_lightDirection; // Direction of the light (sun)
+uniform vec3 u_ambientColor;
+uniform vec3 u_lightDirection;
 
 void main() {
-    // Sample the texture using texture coordinates
-    vec4 texColor = texture2D(s_texColor, v_texcoord0);
-
     // Calculate ambient lighting
-    vec3 ambient = u_ambientColor * texColor.rgb * v_ambient_occlusion;
+    vec3 ambient = u_ambientColor * v_color0 * v_ao;
 
     // Calculate diffuse lighting
-    // Normalize the light direction and calculate dot product
-    float diff = max(dot(v_normal, normalize(u_lightDirection)), 0);
-    vec3 diffuse = diff * texColor.rgb; // Scale by texture color
+    float diff = max(dot(v_normal, normalize(u_lightDirection)), 0.0);
+    vec3 diffuse = diff * v_color0;
 
     // Combine ambient and diffuse lighting
     vec3 finalColor = ambient + diffuse;
-
-    // Output the final color with ambient and diffuse lighting
-    gl_FragColor = vec4(finalColor, texColor.a);
+    
+    gl_FragColor = vec4(finalColor, 1.0);
 }

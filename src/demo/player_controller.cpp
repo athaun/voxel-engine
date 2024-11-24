@@ -5,7 +5,7 @@ namespace Player {
     const float gravity = -15.0f;
     const float jump_velocity = 10.0f;
 
-    const float default_speed = 0.2f;
+    const float default_speed = 0.02f;
     const float fast_speed = 2.5f;
 
     const float mouse_sensitivity = 0.004f;

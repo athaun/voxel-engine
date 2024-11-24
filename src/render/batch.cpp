@@ -12,11 +12,8 @@ namespace Render {
         // Create dynamic vertex and index buffers to store the batch data
         this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
         this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
-        // Load texture (solid color or actual image)
-        this->grassTexture = loadTexture("src/static/grass.jpg");
         // Create the shader program and uniform only once
         this->shader_program = load_shader(shader_name);
-        this->s_texture = bgfx::createUniform("s_texture", bgfx::UniformType::Sampler);
         this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
         this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
@@ -25,16 +22,11 @@ namespace Render {
         bgfx::destroy(this->vertex_buffer);
         bgfx::destroy(this->index_buffer);
         bgfx::destroy(this->shader_program);
-        bgfx::destroy(this->grassTexture);
-        bgfx::destroy(this->s_texture);
         bgfx::destroy(this->u_ambientColor);
         bgfx::destroy(this->u_lightDirection);   
     }
 
     void Batch::submit() {
-        // Bind the texture before rendering
-        bgfx::setTexture(0, this->s_texture, this->grassTexture);
-        
         // Set the ambient color
         float ambientColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f }; // Low intensity gray
         bgfx::setUniform(u_ambientColor, ambientColor);

@@ -58,7 +58,7 @@ namespace Demo {
 
     void update() {
         debug_text();
-        lighting();
+        //lighting();
         chunks();
         input();
         Player::move();

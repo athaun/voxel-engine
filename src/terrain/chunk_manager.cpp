@@ -83,7 +83,7 @@ namespace ChunkManager {
     }
 
     void init() {
-        chunk_circle(0, 0, 15);
+        chunk_circle(0, 0, 2);
         // 20 breaks it :)
     }
     

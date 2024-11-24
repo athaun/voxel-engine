@@ -17,8 +17,6 @@ class Batch {
     unsigned long max_indices;
     unsigned long used_vertices;
     unsigned long used_indices;
-
-    bgfx::UniformHandle s_texture;
     
     bgfx::UniformHandle u_ambientColor;
     bgfx::UniformHandle u_lightDirection;
@@ -27,7 +25,6 @@ class Batch {
     bgfx::DynamicIndexBufferHandle index_buffer;
 
     bgfx::ProgramHandle shader_program;
-    bgfx::TextureHandle grassTexture;
     
 
     std::vector<Mesh> meshes;
