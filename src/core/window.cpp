@@ -31,7 +31,7 @@ namespace Window {
             return;
         }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        window = glfwCreateWindow(1920, 1080, "Hello World", nullptr, nullptr);
+        window = glfwCreateWindow(1920, 1080, ":D", nullptr, nullptr);
         if (!window) {
             Log::error("Failed to create window");
             return;

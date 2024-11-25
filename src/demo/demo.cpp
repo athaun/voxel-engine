@@ -8,6 +8,7 @@
 #include "terrain/chunk_manager.h"
 #include "../core/keyboard.h"
 #include "player_controller.h"
+#include <iostream>
 
 namespace Demo {
     float light_angle = 0.0f;
@@ -53,6 +54,10 @@ namespace Demo {
     void input() {
         if (Keyboard::is_key_pressed(Keyboard::ESCAPE)) {
             Window::exit();
+        }
+
+        if (Keyboard::is_key_pressed(Keyboard::U)) {
+            ChunkManager::destroy_all();
         }
     }
 

@@ -146,7 +146,7 @@
 //             float minY = 0.0f;
 //             float maxY = CHUNK_HEIGHT;
             
-//             if (current_frustum.isBoxVisible(minX, minY, minZ, maxX, maxY, maxZ)) {
+//             if (current_frustum.is_box_visible(minX, minY, minZ, maxX, maxY, maxZ)) {
 //                 chunk->submit_batch();
 //             }
 //         }
@@ -311,9 +311,21 @@ namespace ChunkManager {
 
         for (auto& [coords, chunk] : chunks) {
             delete chunk;
+            chunks.erase(coords);
         }
 
         chunks.clear();
+    }
+
+    void destroy_all() {
+        std::unique_lock<std::shared_mutex> write_lock(chunks_mutex);
+
+        for (auto& [coords, chunk] : chunks) {
+            delete chunk;
+        }
+
+        chunks.clear();
+
     }
 
     void render() {
@@ -333,7 +345,7 @@ namespace ChunkManager {
             float minY = 0.0f;
             float maxY = CHUNK_HEIGHT;
             
-            if (current_frustum.isBoxVisible(minX, minY, minZ, maxX, maxY, maxZ)) {
+            if (current_frustum.is_box_visible(minX, minY, minZ, maxX, maxY, maxZ)) {
                 chunk->submit_batch();
             }
         }

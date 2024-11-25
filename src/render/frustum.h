@@ -64,7 +64,7 @@ struct Frustum {
         }
     }
     
-    bool isBoxVisible(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) const {
+    bool is_box_visible(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) const {
         // Test AABB against all frustum planes
         for (const auto& plane : planes) {
             // Find the point of the box furthest in the direction of the plane normal

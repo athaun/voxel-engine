@@ -14,4 +14,6 @@ namespace ChunkManager {
 
     void serialize();
     void deserialize();
+
+    void destroy_all();
 }
