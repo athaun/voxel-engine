@@ -260,7 +260,6 @@ double Chunk::terrain(int x, int y, int z) {
 
 
 Chunk::~Chunk() {
-    
     delete batch;
 }
 
