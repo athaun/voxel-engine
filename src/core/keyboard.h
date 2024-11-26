@@ -1,4 +1,7 @@
 #pragma once
+
+#include <glfw/glfw3.h>
+
 // Define key constants
 namespace Keyboard {
     const int W = GLFW_KEY_W;

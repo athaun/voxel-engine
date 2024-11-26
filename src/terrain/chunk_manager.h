@@ -7,7 +7,7 @@ namespace ChunkManager {
     void init();
     void update();
     void render();
-    void destroy();
+    void cleanup();
 
     void chunk_circle(int x, int z, int radius);
     void chunk_square(int x, int z, int size);

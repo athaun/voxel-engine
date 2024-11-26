@@ -2,19 +2,23 @@
 
 #include <vector>
 #include <bgfx/bgfx.h>
+#include <terrain/voxel.h>
 
 namespace Render {
 
 typedef struct Vertex {
-    float x, y, z;  // Position
-    float u, v;     // Texture coordinates
-    float nx, ny, nz; // Normal
+    float x, y, z;      // Position
+    float r, g, b;      // Color
+    float nx, ny, nz;   // Normal
+    float ao;           // Ambient Occlusion
+
     static bgfx::VertexLayout init() {
         bgfx::VertexLayout layout;
         layout.begin()
             .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float) // Add normals
+            .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Float)  // RGB color
+            .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color1, 1, bgfx::AttribType::Float)  // AO
             .end();
         bgfx::createVertexLayout(layout);
         return layout;
@@ -32,10 +36,8 @@ typedef struct Mesh {
 
 Mesh transform_mesh(Mesh mesh, float x, float y, float z);
 Mesh scale_mesh(Mesh mesh, float x, float y, float z);
-
-Mesh cube();
 Mesh colored_cube(uint32_t color);
-Mesh cube(uint8_t used_faces);
+Mesh cube(uint8_t used_faces, const float* ao_values = nullptr, voxel::Material material = voxel::STONE);
 
 Mesh quad(int face, float width, float height);
 
