@@ -36,6 +36,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                 // }
                 if (y > height) {
                     v.material = voxel::AIR;
+                    estimated_mesh_count--;
                 }
                 else if (y == height - 1) {
                     v.material = voxel::GRASS;
@@ -50,6 +51,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                     v.material = voxel::STONE;
                 }
                 set_voxel(x, y, z, v);
+                estimated_mesh_count++;
             }
         }
     }
