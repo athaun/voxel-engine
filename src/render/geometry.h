@@ -36,8 +36,6 @@ typedef struct Mesh {
 
 Mesh transform_mesh(Mesh mesh, float x, float y, float z);
 Mesh scale_mesh(Mesh mesh, float x, float y, float z);
-
-Mesh cube();
 Mesh colored_cube(uint32_t color);
 Mesh cube(uint8_t used_faces, const float* ao_values = nullptr, voxel::Material material = voxel::STONE);
 

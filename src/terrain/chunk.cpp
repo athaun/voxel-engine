@@ -30,7 +30,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             int height = terrain_heights[x + BUFFER_SIZE/2][z + BUFFER_SIZE/2];
-            double water_value = water_noise(global_x + x, global_z + z);
+            // double water_value = water_noise(global_x + x, global_z + z);
             
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
@@ -337,8 +337,8 @@ void Chunk::set_neighbor(int direction, Chunk* neighbor) {
     neighbors[direction] = neighbor;
 }
 
-double Chunk::water_noise(int x, int z) {
-    static OpenSimplexNoise::Noise noise(42); // Different seed than terrain
-    double scale = 0.02;
-    return noise.eval(x * scale, z * scale);
-}
+// double Chunk::water_noise(int x, int z) {
+//     static OpenSimplexNoise::Noise noise(42); // Different seed than terrain
+//     double scale = 0.02;
+//     return noise.eval(x * scale, z * scale);
+// }

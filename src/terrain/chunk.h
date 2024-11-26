@@ -35,9 +35,9 @@ private:
     static const int BUFFER_SIZE = 2;
     int terrain_heights[CHUNK_WIDTH + BUFFER_SIZE][CHUNK_DEPTH + BUFFER_SIZE];
 
-    // Stuff for water :P
-    static constexpr int SEA_LEVEL = 0;
-    double water_noise(int x, int z); // New noise function for water distribution
+    // // Stuff for water :P
+    // static constexpr int SEA_LEVEL = 0;
+    // double water_noise(int x, int z); // New noise function for water distribution
 
     size_t voxel_index(int x, int y, int z);
     double terrain(int x, int y, int z);
