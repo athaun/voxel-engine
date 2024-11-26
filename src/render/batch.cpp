@@ -1,5 +1,4 @@
 #include "batch.h"
-#include "texture.h"
 #include "../core/Log.h"
 
 namespace Render {

@@ -43,17 +43,17 @@ namespace Render {
 
     std::vector<Vertex> cube_vertices = {
         // x     y     z         u     v         nx   ny   nz
-        {-0.5,  0.5,  0.5,      1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 0
-        { 0.5,  0.5,  0.5,      0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 1
-        {-0.5, -0.5,  0.5,      1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 2
-        { 0.5, -0.5,  0.5,      0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 3
-        {-0.5,  0.5, -0.5,      0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 4
-        { 0.5,  0.5, -0.5,      1.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 5
-        {-0.5, -0.5, -0.5,      0.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 6
-        { 0.5, -0.5, -0.5,      1.0f, 1.0f,      0.0f, 0.0f, 0.0f}, // 7
+        {-0.5,  0.5,  0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 0
+        { 0.5,  0.5,  0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 1
+        {-0.5, -0.5,  0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 2
+        { 0.5, -0.5,  0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 3
+        {-0.5,  0.5, -0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 4
+        { 0.5,  0.5, -0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 5
+        {-0.5, -0.5, -0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 6
+        { 0.5, -0.5, -0.5,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 0.0f}, // 7
     };
 
-    Mesh cube(uint8_t used_faces, const float* ao_values) {
+    Mesh cube(uint8_t used_faces, const float* ao_values, voxel::Material material) {
         Mesh mesh;
         mesh.vertices.clear();
         mesh.vertex_indices.clear();
@@ -106,7 +106,7 @@ namespace Render {
                 v.ny = face_normal.y;
                 v.nz = face_normal.z;
 
-                const auto& color = voxel::MATERIAL_COLORS[voxel::GRASS];
+                const auto& color = voxel::MATERIAL_COLORS[material]; // Get actual material color
                 v.r = color.r;
                 v.g = color.g;
                 v.b = color.b;

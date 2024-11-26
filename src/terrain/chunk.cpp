@@ -29,14 +29,32 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     // Second pass: Generate voxels for the actual chunk (without buffer)
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
-            // Use the buffered terrain height array (offset by BUFFER_SIZE/2)
             int height = terrain_heights[x + BUFFER_SIZE/2][z + BUFFER_SIZE/2];
+            double water_value = water_noise(global_x + x, global_z + z);
             
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
-                v.material = (height > y ? voxel::Material::STONE : voxel::Material::AIR);
+                
+                // Check for water at sea level
+                // if (y == SEA_LEVEL && height <= SEA_LEVEL && water_value > 0.1) {
+                //     v.material = voxel::WATER;
+                // }
+                if (y >= height) {
+                    v.material = voxel::AIR;
+                }
+                else if (y == height - 1) {
+                    v.material = voxel::GRASS;
+                }
+                else if (y == height - 2) {
+                    v.material = voxel::DIRT;
+                }
+                else if (y == height - 3) {
+                    v.material = voxel::DIRT;
+                }
+                else {
+                    v.material = voxel::STONE;
+                }
                 set_voxel(x, y, z, v);
-                estimated_mesh_count++;
             }
         }
     }
@@ -48,22 +66,21 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
     // Third pass: Generate meshes using the buffered terrain data
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int z = 0; z < CHUNK_DEPTH; z++) {
-            // Get the height at current position
             int current_height = terrain_heights[x + BUFFER_SIZE/2][z + BUFFER_SIZE/2];
             
-            // Generate voxels from bottom up to the terrain height
             for (int y = 0; y < current_height; y++) {
                 used_faces = get_visible_faces(x, y, z);
                 
                 if (used_faces != 0) {
+                    Voxel current_voxel = get_voxel(x, y, z); // Get current voxel material
+                    
                     for (int face = 0; face < 6; ++face) {
                         if (used_faces & (1 << face)) {
                             float raw_values[4];
                             calculate_face_ao(x, y, z, face, raw_values);
                             
                             Render::Mesh c = Render::transform_mesh(
-                                Render::cube(1 << face, raw_values), 
-                                global_x + x, y, global_z + z
+                                Render::cube(static_cast<uint8_t>(1 << face), raw_values, current_voxel.material), global_x + x, y, global_z + z
                             );
                             mesh_buffer.push_back(c);
                         }
@@ -131,8 +148,8 @@ uint8_t Chunk::get_visible_faces(int x, int y, int z) {
 float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
                           int corner2_x, int corner2_y, int corner2_z) {
     // Check neighboring blocks
-    float side1 = !is_empty(x + corner1_x, y + corner1_y, z + corner1_z) ? 0.18f : 0.0f;
-    float side2 = !is_empty(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.18f : 0.0f;
+    float side1 = !is_empty(x + corner1_x, y + corner1_y, z + corner1_z) ? 0.20f : 0.0f;
+    float side2 = !is_empty(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.20f : 0.0f;
     
     // Check corner block
     float corner = !is_empty(x + corner1_x + corner2_x, 
@@ -151,19 +168,24 @@ float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int
     if (side1 > 0.0f && side2 > 0.0f) {
         occlusion = side1 + side2;
     }
+    
+    /////////
+    // Programming note: This is a bit of a mess, especially with all the scaling on the diagonal_lower value, but it's the smoothest I could make it without having something look too dark.
+    /////////
+
     // If one side is present, add its occlusion plus partial corner/diagonal influence
     else if (side1 > 0.0f || side2 > 0.0f) {
-        occlusion = std::max(side1, side2) + (corner * 0.6f);
+        occlusion = (std::max(side1, side2)* 0.7) + (corner * 0.5);
         // Only add diagonal if corner is empty
         if (corner == 0.0f) {
-            occlusion += diagonal_lower * 0.25f;
+            occlusion += diagonal_lower * 0.4f;
         }
     }
     // If no sides, use corner and diagonal
     else {
         occlusion = corner;
         if (corner == 0.0f) {
-            occlusion += diagonal_lower;
+            occlusion += diagonal_lower * 0.8;
         }
     }
 
@@ -206,10 +228,10 @@ v2 ------------v3   +z
 
     switch(face) {
         case 0: // Front face (+Z) - this one looks correct
-            raw_values[0] = calculate_ao(x, y, z, -1, 0, -1, 0, 1, -1);  // top-left
-            raw_values[1] = calculate_ao(x, y, z, 1, 0, -1, 0, 1, -1);   // top-right  
-            raw_values[2] = calculate_ao(x, y, z, -1, 0, -1, 0, -1, -1); // bottom-left
-            raw_values[3] = calculate_ao(x, y, z, 1, 0, -1, 0, -1, -1);  // bottom-right
+            raw_values[0] = calculate_ao(x, y, z, -1, 0, 1, 0, 1, 1);  // top-left
+            raw_values[1] = calculate_ao(x, y, z, 1, 0, 1, 0, 1, 1);   // top-right
+            raw_values[2] = calculate_ao(x, y, z, -1, 0, 1, 0, -1, 1); // bottom-left
+            raw_values[3] = calculate_ao(x, y, z, 1, 0, 1, 0, -1, 1);  // bottom-right
             break;
             
         case 1: // Right face (+X)
@@ -313,4 +335,10 @@ std::pair<int, int> Chunk::get_position() {
 
 void Chunk::set_neighbor(int direction, Chunk* neighbor) {
     neighbors[direction] = neighbor;
+}
+
+double Chunk::water_noise(int x, int z) {
+    static OpenSimplexNoise::Noise noise(42); // Different seed than terrain
+    double scale = 0.02;
+    return noise.eval(x * scale, z * scale);
 }

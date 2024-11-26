@@ -11,7 +11,7 @@
 
 namespace Demo {
     float light_angle = 0.0f;
-    float light_orbit_speed = 0.005f;
+    float light_orbit_speed = 0.0005f;
     float light_orbit_radius = 100.0f;
     
     bx::Vec3 light_direction(0.0f, 0.0f, 0.0f);
@@ -30,9 +30,9 @@ namespace Demo {
     void lighting() {
         light_angle += light_orbit_speed;
         
-        float lightX = 0.0f;
-        float lightY = light_orbit_radius * cos(light_angle);
-        float lightZ = light_orbit_radius * sin(light_angle);
+        float    lightX = light_orbit_radius * cos(light_angle);
+        float    lightY = 0.0f;
+        float    lightZ = light_orbit_radius * sin(light_angle);
 
         light_direction = {-lightX, -lightY, -lightZ};
         bgfx::setUniform(u_light_direction, &light_direction);
@@ -58,7 +58,7 @@ namespace Demo {
 
     void update() {
         debug_text();
-        //lighting();
+        lighting();
         chunks();
         input();
         Player::move();
