@@ -6,9 +6,9 @@
 #include "../render/batch.h"
 #include "voxel.h"
 
-const int CHUNK_WIDTH = 24;
-const int CHUNK_DEPTH = 24;
-const int CHUNK_HEIGHT = 96;
+const int CHUNK_WIDTH = 18;
+const int CHUNK_DEPTH = 18;
+const int CHUNK_HEIGHT = 128;
 
 struct Face {
     int x, y, z;       // Starting position
@@ -67,6 +67,8 @@ private:
     // // Stuff for water :P
     // static constexpr int SEA_LEVEL = 0;
     // double water_noise(int x, int z); // New noise function for water distribution
+    template <typename T>
+    T random(T lower, T upper);
 
     size_t voxel_index(int x, int y, int z);
     voxel::Material get_material(int x, int y, int z);

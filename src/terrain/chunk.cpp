@@ -3,6 +3,8 @@
 #include "../noise/OpenSimplexNoise.h"
 #include "../core/timer.h"
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
     static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
@@ -17,7 +19,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         for (int z = 0; z < CHUNK_DEPTH + BUFFER_SIZE; z++) {           
             // Clamp the terrain height to CHUNK_HEIGHT
             int height = terrain(global_x + x - BUFFER_SIZE / 2, 0, global_z + z - BUFFER_SIZE / 2);
-            terrain_heights[x][z] = std::min(height, CHUNK_HEIGHT - 1);
+            terrain_heights[x][z] = std::clamp(height, 5, CHUNK_HEIGHT); // 5 is sea-level
         }
     }
 
@@ -30,26 +32,29 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
                 
-                // Check for water at sea level
-                // if (y == SEA_LEVEL && height <= SEA_LEVEL && water_value > 0.1) {
-                //     v.material = voxel::WATER;
-                // }
                 if (y > height) {
                     v.material = voxel::AIR;
                     estimated_mesh_count--;
-                }
-                else if (y == height - 1) {
+                } else if (y > height - 1) {
                     v.material = voxel::GRASS;
-                }
-                else if (y == height - 2) {
+                } else if (y >= height - 2) {
                     v.material = voxel::DIRT;
-                }
-                else if (y == height - 3) {
-                    v.material = voxel::DIRT;
-                }
-                else {
+                } else {
                     v.material = voxel::STONE;
                 }
+
+                if (height < 12 + random(0, 2)) {
+                    v.material = voxel::SAND;
+                } else if (height > CHUNK_HEIGHT - 20 + random(-2, 4)) {
+                    v.material = voxel::SNOW;
+                } else if (height > CHUNK_HEIGHT - 30 + random(0, 3)) {
+                    v.material = voxel::STONE;
+                }
+
+                if (height == 5) {
+                    v.material = voxel::WATER;
+                }
+
                 set_voxel(x, y, z, v);
                 estimated_mesh_count++;
             }
@@ -91,6 +96,19 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         }
     }
     batch->push_mesh_buffer(mesh_buffer);
+}
+
+template <typename T>
+T Chunk::random(T lower, T upper) {
+    // Seed the random number generator once
+    static bool seeded = false;
+    if (!seeded) {
+        std::srand(std::time(0));  // Seed the random number generator with current time
+        seeded = true;
+    }
+
+    // Generate a random number in the range [lower, upper]
+    return lower + (std::rand() % (upper - lower + 1));
 }
 
 inline int Chunk::buffered_terrain_height(int x, int z) {
@@ -136,7 +154,7 @@ float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int
                           int corner2_x, int corner2_y, int corner2_z) {
     // Check neighboring blocks
     float side1 = !is_above_terrain(x + corner1_x, y + corner1_y, z + corner1_z) ? 0.20f : 0.0f;
-    float side2 = !is_empty(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.20f : 0.0f;
+    float side2 = !is_above_terrain(x + corner2_x, y + corner2_y, z + corner2_z) ? 0.20f : 0.0f;
     
     // Check corner block
     float corner = !is_above_terrain(x + corner1_x + corner2_x, 
@@ -293,7 +311,10 @@ double Chunk::terrain(int x, int y, int z) {
         frequency *= lacunarity;
     }
 
-    return (double)map((double)noiseValue, -1.0, 1.0, 0.0, (double)CHUNK_HEIGHT);
+    double height = (double)map(noiseValue, -1.0, 1.0, 5.0, (double)CHUNK_HEIGHT - 5);
+    height = height * height / (CHUNK_HEIGHT);
+
+    return height;
 }
 
 

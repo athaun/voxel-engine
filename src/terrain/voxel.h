@@ -16,6 +16,7 @@ namespace voxel {
         SAND,
         WOOD,
         LEAVES,
+        SNOW,
         GLASS,
     };
 
@@ -29,6 +30,7 @@ namespace voxel {
         {0.9f, 0.9f, 0.7f},     // SAND
         {0.6f, 0.4f, 0.2f},     // WOOD
         {0.2f, 0.6f, 0.2f},     // LEAVES
+        {1.0f, 1.0f, 1.0f},     // SNOW
         {0.9f, 0.9f, 1.0f},     // GLASS
     };
 }

@@ -170,7 +170,7 @@
 
 namespace ChunkManager {
     static Frustum current_frustum;
-    static const int CHUNK_RADIUS = 8;  // Number of chunks to generate around the player
+    static const int CHUNK_RADIUS = 14;  // Number of chunks to generate around the player
     
     struct PendingChunk {
         std::pair<int, int> coords;
