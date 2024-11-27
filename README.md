@@ -16,7 +16,7 @@ Run the script without parameters for usage instructions.
 ```sh
 # DOS
 > .\build.bat
-# Linux
+# Mac OS
 $ ./build.sh
 ```
 
@@ -26,7 +26,7 @@ The `compile` command will generate a build solution in the `./build/[build_syst
 ```sh
 # DOS
 > .\build.bat compile vs2022 Release [num_cores]
-# Linux
+# Mac OS
 $ ./build.sh compile gmake2 Release [num_cores]
 ```
 If you would prefer to create a build solution and use an IDE, this will work, or you can use premake as normal.
@@ -41,7 +41,7 @@ The `compile` command will build an executable within the following directory st
 ```sh
 # DOS
 > .\build.bat run vs2022 Release [num_cores]
-# Linux
+# Mac OS
 $ ./build.sh run gmake2 Release [num_cores]
 ```
 

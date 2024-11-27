@@ -1,3 +1,4 @@
+#include <iostream>
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <GLFW/glfw3.h>
@@ -12,6 +13,7 @@
 #elif BX_PLATFORM_OSX
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
+#include <GLFW/glfw3native.h>
 
 #include "window.h"
 #include "log.h"
@@ -31,7 +33,7 @@ namespace Window {
             return;
         }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        window = glfwCreateWindow(1920, 1080, "Hello World", nullptr, nullptr);
+        window = glfwCreateWindow(1920, 1080, ":D", nullptr, nullptr);
         if (!window) {
             Log::error("Failed to create window");
             return;
@@ -42,19 +44,25 @@ namespace Window {
         // Disable cursor
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-        // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
-        // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // macOS requirement
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         
         // Initialize BGFX for rendering
         bgfx::Init bgfxInit;
-        bgfxInit.type = bgfx::RendererType::Count;
-        bgfxInit.resolution.width = 1920;
-        bgfxInit.resolution.height = 1080;
-        bgfxInit.resolution.reset = BGFX_RESET_NONE;
+        // bgfxInit.type = bgfx::RendererType::Count;
+        bgfxInit.resolution.width = 1600;
+        bgfxInit.resolution.height = 900;
+        bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
         bgfxInit.debug = BGFX_DEBUG_IFH;
+
+        #if BX_PLATFORM_OSX
+            bgfxInit.type = bgfx::RendererType::OpenGL;
+        #else
+            bgfxInit.type = bgfx::RendererType::Count;
+        #endif
 
         bgfxInit.platformData.ndt = nullptr;
         #if BX_PLATFORM_WINDOWS
@@ -67,13 +75,20 @@ namespace Window {
             bgfxInit.platformData.nwh = glfwGetCocoaWindow(window);
         #endif
 
+        bgfx::renderFrame();
+
         if (!bgfx::init(bgfxInit)) {
             Log::error("Failed to initialize BGFX");
             return;
         }
 
-	    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+        bgfx::touch(0);
 
+        glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+            bgfx::reset(width, height, BGFX_RESET_VSYNC);
+            bgfx::setViewRect(0, 0, 0, width, height);
+        });
+        glfwSetWindowSize(window, bgfxInit.resolution.width, bgfxInit.resolution.height);
         glfwGetWindowSize(window, &Window::width, &Window::height);
 
         prev_time = std::chrono::steady_clock::now();

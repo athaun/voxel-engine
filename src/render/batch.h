@@ -13,10 +13,10 @@ namespace Render {
 
 class Batch {
    private:
-    unsigned long max_vertices;
-    unsigned long max_indices;
-    unsigned long used_vertices;
-    unsigned long used_indices;
+    uint32_t max_vertices;
+    uint32_t max_indices;
+    uint32_t used_vertices;
+    uint32_t used_indices;
 
     bgfx::UniformHandle s_texture;
     
@@ -27,7 +27,6 @@ class Batch {
     bgfx::DynamicIndexBufferHandle index_buffer;
 
     bgfx::ProgramHandle shader_program;
-    bgfx::TextureHandle grassTexture;
     
 
     std::vector<Mesh> meshes;

@@ -28,20 +28,21 @@ PrintHelp() {
 }
 
 Compile() {
-    $premakeBinary "$buildSystem"
+    $premakeBinary "$buildSystem" || exit 1
     cd build/"$buildSystem"
-    make CONFIG="$configuration" -j"$numCores"
+    make CONFIG="$configuration" -j"$numCores" || exit 1
     cd -
 }
 
 Run() {
     Compile
-    # Add your run commands here
+    # ./build/gmake2/bin/x86/Release/voxels
+    ./build/"$buildSystem"/bin/arm64/Release/voxels
 }
 
 # Default values
 buildSystem=${2:-gmake2}
-configuration=${3:-Debug}
+configuration=${3:-Release}
 numCores=${4:-4}
 
 # Main script logic

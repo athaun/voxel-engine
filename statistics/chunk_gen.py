@@ -114,5 +114,5 @@ def process_all_chunk_gen_files(directory):
     
     create_comparison_plots(directory)
 
-directory = 'data/chunk_gen'
+directory = 'data/chunk_feature_addition'
 process_all_chunk_gen_files(directory)
