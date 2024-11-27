@@ -151,14 +151,14 @@ project "voxels"
 		path.join(BIMG_DIR, "include"),
 		path.join(BIMG_DIR, "3rdparty/stb"),
 	}
-	links { "bgfx", "bimg", "bx", "glfw3" }
+	links { "bgfx", "bimg", "bx" }
 
 	filter "system:linux" 
 		links { "dl", "GL", "pthread", "X11" }
-	filter "system:macosx"
+		filter "system:macosx"
 		links { "glfw3", "QuartzCore.framework", "Metal.framework", "Cocoa.framework", "IOKit.framework", "CoreVideo.framework" }
 	filter "system:windows" 
-        links { "gdi32", "kernel32", "psapi" }
+        links { "glfw", "gdi32", "kernel32", "psapi" }
 	setBxCompat()
     compileShaders()
     
