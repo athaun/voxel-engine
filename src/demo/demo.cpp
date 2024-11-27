@@ -19,7 +19,7 @@ namespace Demo {
     bgfx::UniformHandle u_light_direction;
 
     void init() {
-        bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f, 0);
+        bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x5688e1FF, 1.0f, 0);
         bgfx::setViewRect(0, 0, 0, Window::width, Window::height);
 
         u_light_direction = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
