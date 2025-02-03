@@ -16,25 +16,21 @@ namespace Render {
         // Create the shader program and uniform only once
         this->shader_program = load_shader(shader_name);
         this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
-        this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
 
     Batch::~Batch() {
         bgfx::destroy(this->vertex_buffer);
         bgfx::destroy(this->index_buffer);
         bgfx::destroy(this->shader_program);
-        bgfx::destroy(this->u_ambientColor);
-        bgfx::destroy(this->u_lightDirection);   
+        bgfx::destroy(this->u_ambientColor); 
     }
 
     void Batch::submit() {
         // Set the ambient color
         float ambientColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f }; // Low intensity gray
         bgfx::setUniform(u_ambientColor, ambientColor);
-
         bgfx::setVertexBuffer(0, this->vertex_buffer);
         bgfx::setIndexBuffer(this->index_buffer);
-
         bgfx::submit(0, this->shader_program);
     }
 
