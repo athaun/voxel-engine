@@ -2,7 +2,7 @@
 Asher Haun and Victor Contreras
 Advised by Dr. Emmet Tomai
 
-[Project board](https://github.com/orgs/UTRGV-CS-Projects/projects/2?query=sort%3Aupdated-desc+is%3Aopen)
+![image](https://github.com/user-attachments/assets/ab4bb8ae-7071-4577-958c-0feb852a6f27)
 
 ### Requirements
 - [Premake 5](https://premake.github.io/) (bundled with repository)
