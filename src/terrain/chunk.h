@@ -43,9 +43,6 @@ class Chunk {
 // Add references/pointers to neighboring chunks
 Chunk* neighbors[6] = {nullptr}; // front, right, back, left, top, bottom
 
-// Helper to check voxels across chunk boundaries
-bool is_empty_with_neighbors(int x, int y, int z);
-
 public:
     Chunk(int x, int y, int z);
     ~Chunk();
@@ -71,25 +68,25 @@ private:
     T random(T lower, T upper);
 
     size_t voxel_index(int x, int y, int z);
-    voxel::Material get_material(int x, int y, int z);
     int buffered_terrain_height(int x, int z);
-    
+
     double terrain(int x, int y, int z);
-    bool is_empty(int x, int y, int z);
     bool is_above_terrain(int x, int y, int z);
 
-    uint8_t get_visible_faces(int x, int y, int z);
-    float calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
+    float calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z,
                        int corner2_x, int corner2_y, int corner2_z);
     void calculate_face_ao(int x, int y, int z, uint8_t face, float ao_values[4]);
 
+    // Binary greedy mesher: occupancy is packed into per-column bitmasks
+    // (see bitcolumn.h) so face exposure for a whole column is a handful of
+    // word ops instead of one comparison per voxel, then exposed faces are
+    // greedily merged into maximal same-material rectangles.
     void generate_greedy_mesh();
-    bool can_extend_face(Voxel starting_voxel, int x, int y, int z, uint8_t dir);
-    void generate_mesh_from_faces(const std::vector<Face>& faces);
-    void merge_faces_xy(uint8_t direction, bool mask[CHUNK_WIDTH][CHUNK_HEIGHT][CHUNK_DEPTH], std::vector<Face>& faces);
-    void merge_faces_zy(uint8_t direction, bool mask[CHUNK_WIDTH][CHUNK_HEIGHT][CHUNK_DEPTH], std::vector<Face>& faces);
-    void merge_faces_xz(uint8_t direction, bool mask[CHUNK_WIDTH][CHUNK_HEIGHT][CHUNK_DEPTH], std::vector<Face>& faces);
-    
+    bool is_solid_for_mesh(int x, int y, int z);
+    void mesh_direction(uint8_t direction, std::vector<Face>& faces);
+    void calculate_merged_face_ao(int w0, int h0, int w1, int h1, int normal, uint8_t direction, float ao_out[4]);
+    Render::Mesh generate_mesh_from_faces(const std::vector<Face>& faces);
+
     int global_x, global_y, global_z;
     std::array<Voxel, CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH> voxels;
     Render::Batch* batch;

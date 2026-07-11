@@ -7,16 +7,9 @@
 #include <ctime>
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
-    static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
-    static int vertex_count = chunk_volume * 12;
-    static int index_count = chunk_volume * 36;
-
-    batch = new Render::Batch(vertex_count, index_count, "cubes");
-    size_t estimated_mesh_count = 0;
-
     // First pass: Generate terrain heights including buffer zone
     for (int x = 0; x < CHUNK_WIDTH + BUFFER_SIZE; x++) {
-        for (int z = 0; z < CHUNK_DEPTH + BUFFER_SIZE; z++) {           
+        for (int z = 0; z < CHUNK_DEPTH + BUFFER_SIZE; z++) {
             // Clamp the terrain height to CHUNK_HEIGHT
             int height = terrain(global_x + x - BUFFER_SIZE / 2, 0, global_z + z - BUFFER_SIZE / 2);
             terrain_heights[x][z] = std::clamp(height, 5, CHUNK_HEIGHT); // 5 is sea-level
@@ -28,13 +21,12 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             // Use the buffered terrain height array (offset by BUFFER_SIZE / 2)
             int height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-            
+
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
-                
+
                 if (y > height) {
                     v.material = voxel::AIR;
-                    estimated_mesh_count--;
                 } else if (y > height - 1) {
                     v.material = voxel::GRASS;
                 } else if (y >= height - 2) {
@@ -56,46 +48,14 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                 }
 
                 set_voxel(x, y, z, v);
-                estimated_mesh_count++;
             }
         }
     }
 
-    // ScopedTimer t1("Face culling");
-
-    uint8_t used_faces = 0b00000000;
-    std::vector<Render::Mesh> mesh_buffer;
-    mesh_buffer.reserve(estimated_mesh_count);
-
-    // Third pass: Generate meshes using the buffered terrain data
-    for (int x = 0; x < CHUNK_WIDTH; x++) {
-        for (int z = 0; z < CHUNK_DEPTH; z++) {
-            // Get the height at current position
-            int current_height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-            
-            // Generate voxels from bottom up to the terrain height
-            for (int y = 0; y <= current_height; y++) {
-                used_faces = get_visible_faces(x, y, z);
-                
-                if (used_faces != 0) {
-                    Voxel current_voxel = get_voxel(x, y, z); // Get current voxel material
-                    
-                    for (int face = 0; face < 6; ++face) {
-                        if (used_faces & (1 << face)) {
-                            float raw_values[4];
-                            calculate_face_ao(x, y, z, face, raw_values);
-                            
-                            Render::Mesh c = Render::transform_mesh(
-                                Render::cube(static_cast<uint8_t>(1 << face), raw_values, current_voxel.material), global_x + x, y, global_z + z
-                            );
-                            mesh_buffer.push_back(c);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    batch->push_mesh_buffer(mesh_buffer);
+    // Third pass: greedy-mesh the chunk, then allocate the GPU batch at the
+    // mesh's actual size instead of the worst-case (every voxel exposing
+    // all 6 faces) bound the old path used.
+    generate_greedy_mesh();
 }
 
 template <typename T>
@@ -118,36 +78,6 @@ inline int Chunk::buffered_terrain_height(int x, int z) {
 
 inline bool Chunk::is_above_terrain(int x, int y, int z) {
     return y > std::min(buffered_terrain_height(x, z), CHUNK_HEIGHT - 1);
-}
-
-inline bool Chunk::is_empty(int x, int y, int z) {
-    // Out-of-bounds beyond the buffer are treated as solid
-    if (x < -BUFFER_SIZE / 2 || x >= CHUNK_WIDTH + BUFFER_SIZE / 2 ||
-        y < 0 || y >= CHUNK_HEIGHT ||
-        z < -BUFFER_SIZE / 2 || z >= CHUNK_DEPTH + BUFFER_SIZE / 2) {
-        return false;
-    }
-
-    // Inside actual chunk bounds
-    if (x >= 0 && x < CHUNK_WIDTH && z >= 0 && z < CHUNK_DEPTH) {
-        return get_voxel(x, y, z).material == voxel::Material::AIR;
-    }
-
-    // Inside buffer zone: compare with terrain height
-    return y > terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-}
-
-uint8_t Chunk::get_visible_faces(int x, int y, int z) {
-    uint8_t used_faces = 0b00000000;
-
-    used_faces |= (y > buffered_terrain_height(x, z + 1)) << 0; // Front face (+Z)
-    used_faces |= (y > buffered_terrain_height(x + 1, z)) << 1; // Right face (+X)
-    used_faces |= (y > buffered_terrain_height(x, z - 1)) << 2; // Back face (-Z)
-    used_faces |= (y > buffered_terrain_height(x - 1, z)) << 3; // Left face (-X)
-    used_faces |= (y == buffered_terrain_height(x, z)) << 4; // Top face (+Y)
-    used_faces |= (y == 0) << 5; // Bottom face (-Y)
-
-    return used_faces;
 }
 
 float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
