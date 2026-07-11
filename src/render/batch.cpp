@@ -2,8 +2,21 @@
 #include "../core/Log.h"
 #include <bx/bx.h>
 #include <iostream>
+#include <mutex>
+#include <unordered_map>
 
 namespace Render {
+    // Every chunk builds its own Batch, but they all share the same handful
+    // of shaders -- cache loaded programs by name instead of re-reading the
+    // shader files and calling bgfx::createProgram per chunk. bgfx's program
+    // handle pool has a fixed capacity; with per-chunk shader creation it was
+    // easy to exhaust it (and reload/recompile the same shader hundreds of
+    // times) once chunk generation got fast enough to build many chunks per
+    // second. Guarded by a mutex since chunks build concurrently on worker
+    // threads.
+    static std::mutex s_shader_cache_mutex;
+    static std::unordered_map<std::string, bgfx::ProgramHandle> s_shader_cache;
+
     Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name) {
         this->max_vertices = max_vertices;
         this->max_indices = max_indices;
@@ -13,8 +26,9 @@ namespace Render {
         // Create dynamic vertex and index buffers to store the batch data
         this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
         this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
-        // Create the shader program and uniform only once
         this->shader_program = load_shader(shader_name);
+        // createUniform is ref-counted by bgfx for matching name+type, so
+        // repeated calls across chunks safely return the same handle.
         this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
         this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
     }
@@ -22,9 +36,11 @@ namespace Render {
     Batch::~Batch() {
         bgfx::destroy(this->vertex_buffer);
         bgfx::destroy(this->index_buffer);
-        bgfx::destroy(this->shader_program);
+        // shader_program is shared across every Batch (see s_shader_cache)
+        // and lives for the process lifetime, so it is deliberately not
+        // destroyed here.
         bgfx::destroy(this->u_ambientColor);
-        bgfx::destroy(this->u_lightDirection);   
+        bgfx::destroy(this->u_lightDirection);
     }
 
     void Batch::submit() {
@@ -138,6 +154,12 @@ namespace Render {
     }
 
     const bgfx::ProgramHandle Batch::load_shader(const char *shader_name) {
+        {
+            std::lock_guard<std::mutex> lock(s_shader_cache_mutex);
+            auto it = s_shader_cache.find(shader_name);
+            if (it != s_shader_cache.end()) return it->second;
+        }
+
         std::string vertex_shader_path = std::filesystem::absolute(std::string("build/shaders/v_") + shader_name + ".bin").string();
         std::string fragment_shader_path = std::filesystem::absolute(std::string("build/shaders/f_") + shader_name + ".bin").string();
 
@@ -197,6 +219,18 @@ namespace Render {
 
         bgfx::destroy(vertex_shader);
         bgfx::destroy(fragment_shader);
+
+        {
+            std::lock_guard<std::mutex> lock(s_shader_cache_mutex);
+            auto it = s_shader_cache.find(shader_name);
+            if (it != s_shader_cache.end()) {
+                // Another worker thread loaded this shader first; use that
+                // one instead of leaking our redundant program handle.
+                bgfx::destroy(program);
+                return it->second;
+            }
+            s_shader_cache[shader_name] = program;
+        }
 
         return program;
     }

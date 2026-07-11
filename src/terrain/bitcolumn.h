@@ -5,6 +5,7 @@
 #pragma once
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 
@@ -46,10 +47,31 @@ struct BitColumn {
         return r;
     }
 
+    BitColumn operator|(const BitColumn& o) const {
+        BitColumn r;
+        for (size_t k = 0; k < WORDS; ++k) r.w[k] = w[k] | o.w[k];
+        return r;
+    }
+
     BitColumn operator~() const {
         BitColumn r;
         for (size_t k = 0; k < WORDS; ++k) r.w[k] = ~w[k];
         return r;
+    }
+
+    // Invoke fn(bitIndex) for every set bit, low to high, using
+    // countr_zero to jump straight to each one instead of testing every
+    // index in the vector.
+    template <typename Fn>
+    void forEachSetBit(Fn&& fn) const {
+        for (size_t k = 0; k < WORDS; ++k) {
+            uint64_t bits = w[k];
+            while (bits) {
+                int bit = std::countr_zero(bits);
+                fn(static_cast<int>(k * 64) + bit);
+                bits &= bits - 1; // clear lowest set bit
+            }
+        }
     }
 };
 

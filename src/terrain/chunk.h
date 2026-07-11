@@ -6,8 +6,8 @@
 #include "../render/batch.h"
 #include "voxel.h"
 
-const int CHUNK_WIDTH = 18;
-const int CHUNK_DEPTH = 18;
+const int CHUNK_WIDTH = 32;
+const int CHUNK_DEPTH = 32;
 const int CHUNK_HEIGHT = 128;
 
 struct Face {

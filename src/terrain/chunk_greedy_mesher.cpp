@@ -79,6 +79,8 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
     const size_t plane = static_cast<size_t>(Wdim) * static_cast<size_t>(Hdim);
 
     std::vector<Col> exposure(plane);
+    Col active_layers; // union of every column's exposure, so the layer
+                        // sweep below can skip layers nothing faces on.
     for (int w = 0; w < Wdim; ++w) {
         for (int h = 0; h < Hdim; ++h) {
             Col col;
@@ -86,15 +88,28 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                 auto p = world_pos(direction, w, h, n);
                 if (is_solid_for_mesh(p[0], p[1], p[2])) col.set(n + 1);
             }
-            exposure[w * Hdim + h] = positive ? (col & ~col.shiftDown()) : (col & ~col.shiftUp());
+            Col& exp = exposure[w * Hdim + h];
+            exp = positive ? (col & ~col.shiftDown()) : (col & ~col.shiftUp());
+            active_layers = active_layers | exp;
         }
     }
 
     std::vector<uint8_t> visited(plane);
     std::vector<uint8_t> hasFace(plane);
     std::vector<voxel::Material> materialAt(plane);
+    std::vector<std::array<float, 4>> aoAt(plane);
 
-    for (int n = 0; n < Ndim; ++n) {
+    auto ao_matches = [](const std::array<float, 4>& a, const std::array<float, 4>& b) {
+        for (int i = 0; i < 4; ++i) {
+            if (std::abs(a[i] - b[i]) > 0.001f) return false;
+        }
+        return true;
+    };
+
+    active_layers.forEachSetBit([&](int padded_n) {
+        const int n = padded_n - 1;
+        if (n < 0 || n >= Ndim) return; // padding bit from the chunk-edge fallback, not a real layer
+
         std::fill(visited.begin(), visited.end(), 0);
 
         for (int w = 0; w < Wdim; ++w) {
@@ -105,6 +120,12 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                 if (exposed) {
                     auto p = world_pos(direction, w, h, n);
                     materialAt[idx] = get_voxel(p[0], p[1], p[2]).material;
+                    // Own AO joins material as part of the merge key below --
+                    // merging across an AO transition would linearly smear it
+                    // into a long gradient/seam across the whole merged quad
+                    // (Render::cube only splits a quad into 2 triangles), so
+                    // runs must stay within a region of uniform shading.
+                    calculate_face_ao(p[0], p[1], p[2], direction, aoAt[idx].data());
                 }
             }
         }
@@ -115,11 +136,12 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                 if (visited[idx0] || !hasFace[idx0]) continue;
 
                 voxel::Material mat = materialAt[idx0];
+                const std::array<float, 4>& ao = aoAt[idx0];
 
                 int w1 = w0 + 1;
                 while (w1 < Wdim) {
                     size_t idx = w1 * Hdim + h0;
-                    if (visited[idx] || !hasFace[idx] || materialAt[idx] != mat) break;
+                    if (visited[idx] || !hasFace[idx] || materialAt[idx] != mat || !ao_matches(aoAt[idx], ao)) break;
                     ++w1;
                 }
 
@@ -128,7 +150,7 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                     bool row_matches = true;
                     for (int w = w0; w < w1; ++w) {
                         size_t idx = w * Hdim + h1;
-                        if (visited[idx] || !hasFace[idx] || materialAt[idx] != mat) { row_matches = false; break; }
+                        if (visited[idx] || !hasFace[idx] || materialAt[idx] != mat || !ao_matches(aoAt[idx], ao)) { row_matches = false; break; }
                     }
                     if (!row_matches) break;
                     ++h1;
@@ -148,7 +170,7 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                 faces.push_back(face);
             }
         }
-    }
+    });
 }
 
 // Recomputes the merged quad's 4 corner AO values by reusing the existing

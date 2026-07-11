@@ -6,7 +6,7 @@
 #include <cmath>
 
 namespace ChunkManager {
-    static const int CHUNK_RADIUS = 10;
+    static const int CHUNK_RADIUS = 20;
     // Unload well past the load radius so chunks near the boundary aren't
     // rebuilt and torn down every time the player nudges back and forth.
     static const int UNLOAD_RADIUS = CHUNK_RADIUS + 4;
@@ -101,12 +101,25 @@ namespace ChunkManager {
     }
 
     void chunk_circle(int x, int z, int radius) {
+        // Queue nearest-first so the worker pool visibly fills in as an
+        // expanding ring around the player rather than in scan order.
+        std::vector<std::pair<int, int>> offsets;
+        offsets.reserve(static_cast<size_t>(radius) * radius * 4);
+
         for (int dx = -radius; dx <= radius; ++dx) {
             for (int dz = -radius; dz <= radius; ++dz) {
                 if (dx * dx + dz * dz <= radius * radius) {
-                    build_chunk(x + dx, 0, z + dz);
+                    offsets.emplace_back(dx, dz);
                 }
             }
+        }
+
+        std::sort(offsets.begin(), offsets.end(), [](const auto& a, const auto& b) {
+            return (a.first * a.first + a.second * a.second) < (b.first * b.first + b.second * b.second);
+        });
+
+        for (const auto& [dx, dz] : offsets) {
+            build_chunk(x + dx, 0, z + dz);
         }
     }
 
