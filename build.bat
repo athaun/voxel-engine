@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 
 IF "%~1" == "" GOTO PrintHelp
 IF "%~1" == "compile" GOTO Compile
@@ -37,7 +38,30 @@ bin\premake5.exe %1
     bin\premake5.exe %buildSystem%
 
     if not defined DevEnvDir (
-        call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
+        set vsWhere="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+        set vsDevCmd=
+
+        if exist !vsWhere! (
+            for /f "usebackq tokens=*" %%i in (`!vsWhere! -latest -products * -requires Microsoft.Component.MSBuild -find Common7\Tools\VsDevCmd.bat`) do set vsDevCmd=%%i
+        )
+
+        if not defined vsDevCmd (
+            echo Could not locate VsDevCmd.bat via vswhere. Falling back to common install paths.
+            for %%p in (
+                "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
+                "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\Tools\VsDevCmd.bat"
+                "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+                "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
+            ) do (
+                if exist %%p set vsDevCmd=%%~p
+            )
+        )
+
+        if defined vsDevCmd (
+            call "!vsDevCmd!" -arch=x64
+        ) else (
+            echo Could not find a Visual Studio 2022 installation with VsDevCmd.bat.
+        )
     )
 
     set solutionFile=build\%buildSystem%\voxels-senior-project.sln
