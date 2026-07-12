@@ -7,14 +7,13 @@
 #include <random>
 
 namespace {
-    // Below this Y, terrain basins fill with water instead of sitting open
-    // to air.
-    constexpr int SEA_LEVEL = 20;
     // Peaks at or above this Y get a snow cap.
     constexpr int SNOW_LINE = 80;
     // How many layers below the surface still count as "near-surface" (dirt/
     // sand) before it's just deep stone.
     constexpr int SUBSURFACE_DEPTH = 4;
+    // Aridity above this counts as desert (mesa terrain + sand cover).
+    constexpr double DESERT_THRESHOLD = 0.35;
 }
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
@@ -32,6 +31,7 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             // Use the buffered terrain height array (offset by BUFFER_SIZE / 2)
             int height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
+            bool is_desert = aridity(global_x + x, global_z + z) > DESERT_THRESHOLD;
 
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
@@ -43,15 +43,22 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
                 } else if (y > height - SUBSURFACE_DEPTH) {
                     // Surface and near-surface layers follow elevation, so a
                     // single slope naturally runs beach -> grass -> snow cap
-                    // instead of the whole column being one material.
-                    if (height <= SEA_LEVEL + 2 + random(0, 2)) {
+                    // instead of the whole column being one material. Desert
+                    // mesas stay sandy regardless of elevation (that's what
+                    // makes them read as desert instead of a snowy plateau).
+                    if (is_desert || height <= SEA_LEVEL + 2 + random(0, 2)) {
                         v.material = voxel::SAND;
                     } else if (height >= SNOW_LINE + random(-3, 3)) {
                         v.material = (y == height) ? voxel::SNOW : voxel::STONE;
+                    } else if (height >= SNOW_LINE - 4 + random(-3, 3)) {
+                        v.material = voxel::STONE;
                     } else {
                         v.material = (y == height) ? voxel::GRASS : voxel::DIRT;
                     }
                 } else {
+                    // Deep underground -- also what shows on a mesa's sheer
+                    // terrace walls once they drop more than SUBSURFACE_DEPTH,
+                    // giving the classic sandy-cap-over-bare-rock look.
                     v.material = voxel::STONE;
                 }
 
@@ -60,40 +67,99 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         }
     }
 
-    // Third pass: scatter simple trees on grass. Kept away from the chunk
-    // edges (by more than the canopy radius) so a canopy never needs to
-    // write into a neighboring chunk we don't own.
-    const int tree_margin = 3;
+    // Third pass: scatter varied trees on grass -- oak (round canopy), pine
+    // (tall and conical), and bush (short and wide) -- instead of one
+    // identical shape everywhere. Kept away from the chunk edges (by more
+    // than the largest canopy radius) so a canopy never needs to write into
+    // a neighboring chunk we don't own.
+    static const OpenSimplexNoise::Noise forest_noise(700);
+    const int tree_margin = 4;
     for (int x = tree_margin; x < CHUNK_WIDTH - tree_margin; x++) {
         for (int z = tree_margin; z < CHUNK_DEPTH - tree_margin; z++) {
             int height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
+            int wx = global_x + x, wz = global_z + z;
 
             bool is_sandy = height <= SEA_LEVEL + 4;
             bool is_snowy = height >= SNOW_LINE - 4;
-            if (is_sandy || is_snowy || height >= CHUNK_HEIGHT - 8) continue;
+            bool is_desert = aridity(wx, wz) > DESERT_THRESHOLD;
+            if (is_sandy || is_snowy || is_desert || height >= CHUNK_HEIGHT - 12) continue;
 
-            if (random(0, 999) >= 12) continue; // ~1.2% of eligible columns
+            // Forests are patches, not an even scatter: outside a forest
+            // region there are no trees at all (real open plains), and
+            // density ramps up toward the middle of a forest instead of
+            // being uniform everywhere.
+            double forest = forest_noise.eval(wx * 0.004, wz * 0.004); // [-1,1]
+            if (forest < 0.15) continue;
+            double forest_t = std::clamp((forest - 0.15) / 0.5, 0.0, 1.0);
+            int chance = static_cast<int>(4 + forest_t * 40); // 0.4% at the edge, 4.4% at the core
 
-            int trunk_height = random(4, 6);
-            for (int dy = 1; dy <= trunk_height; dy++) {
+            if (random(0, 999) >= chance) continue;
+
+            auto place_leaf = [&](int lx, int ly, int lz) {
+                if (ly < 0 || ly >= CHUNK_HEIGHT) return;
+                Voxel leaf;
+                leaf.material = voxel::LEAVES;
+                set_voxel(lx, ly, lz, leaf);
+            };
+            auto place_trunk = [&](int ty) {
+                if (ty < 0 || ty >= CHUNK_HEIGHT) return;
                 Voxel trunk;
                 trunk.material = voxel::WOOD;
-                set_voxel(x, height + dy, z, trunk);
-            }
+                set_voxel(x, ty, z, trunk);
+            };
 
-            int canopy_center = height + trunk_height;
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int dz = -2; dz <= 2; dz++) {
-                    for (int dy = -1; dy <= 2; dy++) {
-                        if (dx == 0 && dz == 0 && dy <= 0) continue; // leave the trunk's top clear
-                        if (dx * dx + dz * dz + dy * dy * 2 > 8) continue; // rounded canopy
+            int tree_type = random(0, 9); // 0-5 oak, 6-8 pine, 9 bush
 
-                        int ly = canopy_center + dy;
-                        if (ly >= CHUNK_HEIGHT) continue;
+            if (tree_type <= 5) {
+                // Oak: round, slightly ragged canopy on a medium trunk.
+                int trunk_height = random(4, 6);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
 
-                        Voxel leaf;
-                        leaf.material = voxel::LEAVES;
-                        set_voxel(x + dx, ly, z + dz, leaf);
+                int radius = random(2, 3);
+                int canopy_center = height + trunk_height;
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        for (int dy = -1; dy <= radius; dy++) {
+                            if (dx == 0 && dz == 0 && dy <= 0) continue; // leave the trunk's top clear
+                            int dist2 = dx * dx + dz * dz + dy * dy * 2;
+                            if (dist2 > radius * radius + 2) continue;
+                            if (dist2 > radius * radius - 1 && random(0, 3) == 0) continue; // ragged edge
+                            place_leaf(x + dx, canopy_center + dy, z + dz);
+                        }
+                    }
+                }
+            } else if (tree_type <= 8) {
+                // Pine: tall trunk, stacked rings narrowing toward the top.
+                int trunk_height = random(7, 11);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
+
+                int layers = random(4, 6);
+                int top = height + trunk_height;
+                for (int layer = 0; layer < layers; layer++) {
+                    int ly = top - layers + layer + 1;
+                    int r = std::max(1, (layers - layer) / 2 + 1);
+                    for (int dx = -r; dx <= r; dx++) {
+                        for (int dz = -r; dz <= r; dz++) {
+                            if (dx == 0 && dz == 0) continue; // trunk column stays clear
+                            if (dx * dx + dz * dz > r * r + 1) continue;
+                            place_leaf(x + dx, ly, z + dz);
+                        }
+                    }
+                }
+                place_leaf(x, top + 1, z); // tip
+            } else {
+                // Bush: short trunk, wide flat canopy.
+                int trunk_height = random(1, 2);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
+
+                int radius = random(2, 3);
+                int canopy_center = height + trunk_height;
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        for (int dy = 0; dy <= 1; dy++) {
+                            if (dx * dx + dz * dz + dy * dy * 3 > radius * radius) continue;
+                            place_leaf(x + dx, canopy_center + dy, z + dz);
+                        }
                     }
                 }
             }
@@ -275,11 +341,6 @@ double Chunk::terrain(int x, int y, int z) {
     const double persistence = 0.3;
     const double lacunarity = 2.0;
 
-    // All generators below are built once (thread-safe static init) and
-    // reused for every call -- constructing a fresh Noise per call rebuilds
-    // its permutation table and was previously the dominant cost of chunk
-    // generation. Noise::eval is const with no mutable state, so sharing
-    // across chunk-worker threads is safe.
     static const std::array<OpenSimplexNoise::Noise, detail_octaves> detail_noise = {
         OpenSimplexNoise::Noise(0), OpenSimplexNoise::Noise(1), OpenSimplexNoise::Noise(2),
         OpenSimplexNoise::Noise(3), OpenSimplexNoise::Noise(4)
@@ -292,30 +353,52 @@ double Chunk::terrain(int x, int y, int z) {
     };
     static const OpenSimplexNoise::Noise warp_noise_x(400);
     static const OpenSimplexNoise::Noise warp_noise_z(401);
+    static const OpenSimplexNoise::Noise mesa_noise(600);
 
     // Domain warp the sample point with a separate low-frequency noise field
     // so coastlines and ridgelines wind naturally instead of looking aligned
     // to the underlying noise grid.
     const double warp_scale = 0.006;
-    const double warp_strength = 30.0;
+    const double warp_strength = 45.0;
     double wx = x + warp_noise_x.eval(x * warp_scale, z * warp_scale) * warp_strength;
     double wz = z + warp_noise_z.eval(x * warp_scale + 500.0, z * warp_scale - 500.0) * warp_strength;
 
-    // Continentalness in [-1, 1]: negative is ocean, positive is inland.
-    // Scaled ~4x smaller-wavelength than the original pass so oceans/coasts/
-    // inland regions ("biomes") are noticeably smaller and change more often
-    // as you walk around, instead of one region spanning the whole map.
     double continent = continent_noise.eval(wx * 0.0045, wz * 0.0045);
 
-    // Erosion in [0, 1]: how much relief a region is allowed -- biased so
-    // most terrain stays gently rolling and only patches get sharp and
-    // craggy, rather than mountains everywhere.
-    double erosion_raw = erosion_noise.eval(wx * 0.007, wz * 0.007);
-    double erosion = std::pow((erosion_raw + 1.0) * 0.5, 1.6);
+    const double PLAINS = 42.0;
+    const double MOUNTAIN_PEAK = 129.0;
+
+    // Desert mesas: terrace a broad noise field into discrete flat-topped
+    // steps with sheer sides instead of smooth hills -- rounding to a fixed
+    // number of levels is what actually produces flat mesa tops and cliff
+    // faces rather than a continuous slope. Computed unconditionally and
+    // blended in below by aridity/continentalness rather than switched to
+    // via a hard branch -- a branch here made height snap between this and
+    // the normal formula below wherever aridity/continentalness crossed
+    // their threshold, even mid-slope, since the two come from unrelated
+    // noise fields with no reason to agree at the boundary.
+    double mesaRaw = mesa_noise.eval(wx * 0.006, wz * 0.006); // [-1, 1]
+    const double mesaLevels = 5.0;
+    double mesaTerraced = std::round(mesaRaw * mesaLevels) / mesaLevels;
+    double mesaHeight = map(mesaTerraced, -1.0, 1.0, PLAINS - 8.0, PLAINS + 50.0);
+    mesaHeight += detail_noise[0].eval(wx * 0.02, wz * 0.02) * 1.5; // slight roughness, tops stay mostly flat
+
+    // Erosion in [0, 1]: how much relief a region is allowed. Thresholded
+    // (not just a power-curve dampener) so a sizeable fraction of erosion-
+    // high regions reach *full* ridge amplitude instead of every region
+    // needing erosion and ridge to both independently peak at once -- that
+    // multiplicative requirement was why mountains almost never actually
+    // appeared. Kept at the original large wavelength (unlike
+    // continentalness) so a mountainous patch is big enough to contain a
+    // whole range instead of clipping it.
+    double erosion_raw = erosion_noise.eval(wx * 0.0022, wz * 0.0022); // [-1, 1]
+    double erosion_t = std::clamp((erosion_raw + 0.1) / 0.4, 0.0, 1.0);
+    double erosion = 0.15 + erosion_t * 0.85; // always some relief, ramping up to full mountains
 
     // Ridged multifractal (1 - |noise|) carves actual mountain ridgelines
-    // and valleys instead of smooth Perlin bumps.
-    double ridge = 0.0, ridge_amp = 1.0, ridge_freq = 0.014, ridge_amp_sum = 0.0;
+    // and valleys instead of smooth Perlin bumps. Also kept at the original
+    // large wavelength so ranges are grand instead of choppy little bumps.
+    double ridge = 0.0, ridge_amp = 1.0, ridge_freq = 0.0065, ridge_amp_sum = 0.0;
     for (auto& octave : ridge_noise) {
         ridge += (1.0 - std::abs(octave.eval(wx * ridge_freq, wz * ridge_freq))) * ridge_amp;
         ridge_amp_sum += ridge_amp;
@@ -336,14 +419,19 @@ double Chunk::terrain(int x, int y, int z) {
     }
     double detail = noiseValue / maxAmplitude;
 
-    const double OCEAN_FLOOR = 6.0;
-    const double SHORE = 22.0;
-    const double PLAINS = 42.0;
-    const double MOUNTAIN_PEAK = 118.0;
-
-    double base = continent < -0.15
-        ? map(continent, -1.0, -0.15, OCEAN_FLOOR, SHORE)
-        : map(continent, -0.15, 1.0, SHORE, PLAINS);
+    // Base elevation from continentalness. The ocean branch is deliberately
+    // capped well below sea level (not just barely under it) so ocean is a
+    // real, reliable body of water instead of a thin puddle at the extreme
+    // edge of the noise range.
+    const double OCEAN_FLOOR = 4.0;
+    double base;
+    if (continent < 0.0) {
+        base = map(continent, -1.0, 0.0, OCEAN_FLOOR, SEA_LEVEL - 3.0);
+    } else if (continent < 0.12) {
+        base = map(continent, 0.0, 0.12, SEA_LEVEL - 3.0, SEA_LEVEL + 8.0);
+    } else {
+        base = map(continent, 0.12, 1.0, SEA_LEVEL + 8.0, PLAINS);
+    }
 
     // Mountains rise out of the plains where erosion allows it, shaped by
     // the ridged noise.
@@ -351,16 +439,43 @@ double Chunk::terrain(int x, int y, int z) {
 
     double height = base + mountain + detail * 4.0;
 
-    return height;
+    // Fade the mesa formula in by aridity/continentalness instead of
+    // switching to it outright, so desert edges taper into the surrounding
+    // terrain (and into the coast) instead of cutting a cliff right at the
+    // threshold.
+    auto smoothstep = [](double edge0, double edge1, double v) {
+        double t = std::clamp((v - edge0) / (edge1 - edge0), 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    };
+    double desertBlend = smoothstep(DESERT_THRESHOLD - 0.08, DESERT_THRESHOLD + 0.08, aridity(x, z))
+                        * smoothstep(-0.10, 0.0, continent);
+
+    return height + (mesaHeight - height) * desertBlend;
 }
 
+// Large-scale field deciding where desert (mesa terrain + sand cover) shows
+// up, independent of elevation -- a desert can be inland at any height, not
+// just a strip near sea level.
+double Chunk::aridity(int x, int z) {
+    static const OpenSimplexNoise::Noise aridity_noise(500);
+    return aridity_noise.eval(x * 0.001, z * 0.001);
+}
 
 Chunk::~Chunk() {
     delete batch;
+    delete water_batch;
 }
 
-void Chunk::submit_batch() {
-    batch->submit();
+void Chunk::submit_opaque_batch() {
+    // Null until upload_to_gpu() runs on the main thread -- a chunk waiting
+    // in the upload queue just doesn't render yet rather than crashing.
+    if (batch) batch->submit();
+}
+
+void Chunk::submit_water_batch() {
+    if (water_batch) {
+        water_batch->submit();
+    }
 }
 
 Voxel Chunk::get_voxel(int x, int y, int z) {

@@ -9,6 +9,12 @@
 #include <vector>
 
 namespace ChunkManager {
+    // How far (in chunks) around the player to keep terrain loaded. Exposed
+    // here (rather than a .cpp-local) so other systems, e.g. fog distance in
+    // Environment, can derive from the actual render distance instead of
+    // duplicating the value.
+    constexpr int CHUNK_RADIUS = 40;
+
     // Thread-safe blocking queue of chunk-build requests. Multiple worker
     // threads pop from it concurrently (multi-producer, multi-consumer).
     class ChunkRequestQueue {

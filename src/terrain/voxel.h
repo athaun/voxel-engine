@@ -26,7 +26,7 @@ namespace voxel {
         {0.5f, 0.5f, 0.5f},     // STONE
         {0.6f, 0.4f, 0.2f},     // DIRT
         {0.3f, 0.8f, 0.2f},     // GRASS
-        {0.2f, 0.3f, 0.9f},     // WATER
+        {0.05f, 0.30f, 0.45f},  // WATER -- deep teal-blue, deliberately far from the sky's pale blue so it still reads as water once fresnel blends in some sky color
         {0.9f, 0.9f, 0.7f},     // SAND
         {0.6f, 0.4f, 0.2f},     // WOOD
         {0.2f, 0.6f, 0.2f},     // LEAVES

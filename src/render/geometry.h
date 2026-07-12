@@ -11,6 +11,7 @@ typedef struct Vertex {
     float r, g, b;      // Color
     float nx, ny, nz;   // Normal
     float ao;           // Ambient Occlusion
+    float material_id;  // voxel::Material, passed through for per-material fragment effects
 
     static bgfx::VertexLayout init() {
         bgfx::VertexLayout layout;
@@ -19,8 +20,17 @@ typedef struct Vertex {
             .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Float)  // RGB color
             .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
             .add(bgfx::Attrib::Color1, 1, bgfx::AttribType::Float)  // AO
+            .add(bgfx::Attrib::TexCoord0, 1, bgfx::AttribType::Float)  // Material id
             .end();
-        bgfx::createVertexLayout(layout);
+        // Deliberately not calling bgfx::createVertexLayout() here:
+        // createDynamicVertexBuffer() (the only caller of this function)
+        // already registers the layout internally and releases that
+        // registration when the buffer is destroyed. An extra explicit
+        // createVertexLayout() call here would register a second,
+        // unpaired reference with no corresponding release anywhere --
+        // this function is called once per chunk built, so that leak grows
+        // for the entire session as you explore, unbounded by however many
+        // chunks are actually loaded at once.
         return layout;
     }
 };

@@ -108,13 +108,14 @@ namespace Window {
     void begin_update() {
         // Calculate delta time
         std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
-        std::chrono::duration<float> delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(current_time - prev_time);
+        std::chrono::duration<float> frame_delta = std::chrono::duration_cast<std::chrono::duration<float>>(current_time - prev_time);
         prev_time = current_time;
+        Window::delta_time = frame_delta.count();
 
         static int frame_count = 0;
         static std::chrono::duration<float> timer(0.0f);
 
-        timer += delta_time;
+        timer += frame_delta;
         frame_count++;
 
         // Update FPS every second

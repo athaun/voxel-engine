@@ -17,44 +17,67 @@ namespace Render {
     static std::mutex s_shader_cache_mutex;
     static std::unordered_map<std::string, bgfx::ProgramHandle> s_shader_cache;
 
-    Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name) {
+    Batch::Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name, bool transparent) {
         this->max_vertices = max_vertices;
         this->max_indices = max_indices;
         this->used_vertices = 0;
         this->used_indices = 0;
+        this->transparent = transparent;
 
-        // Create dynamic vertex and index buffers to store the batch data
+        // Create dynamic vertex and index buffers to store the batch data.
+        // bgfx's dynamic buffer handle pool has a fixed capacity
+        // (BGFX_CONFIG_MAX_DYNAMIC_VERTEX_BUFFERS/INDEX_BUFFERS); every
+        // loaded chunk keeps one of these alive for as long as it's loaded
+        // (two if it has water), so a large enough render distance can
+        // exhaust the pool. createDynamicVertexBuffer/createDynamicIndexBuffer
+        // return an invalid handle rather than throwing when that happens --
+        // check for it here so a pool-exhausted chunk just fails to render
+        // instead of the next bgfx::update() on it hitting a fatal
+        // invalid-handle assert.
         this->vertex_buffer = bgfx::createDynamicVertexBuffer(max_vertices, Vertex::init());
         this->index_buffer = bgfx::createDynamicIndexBuffer(max_indices, BGFX_BUFFER_INDEX32);
+        if (!bgfx::isValid(this->vertex_buffer) || !bgfx::isValid(this->index_buffer)) {
+            Log::error("Failed to create batch buffers: bgfx dynamic buffer pool exhausted (render distance too large for BGFX_CONFIG_MAX_DYNAMIC_VERTEX_BUFFERS/INDEX_BUFFERS)");
+        }
         this->shader_program = load_shader(shader_name);
-        // createUniform is ref-counted by bgfx for matching name+type, so
-        // repeated calls across chunks safely return the same handle.
-        this->u_ambientColor = bgfx::createUniform("u_ambientColor", bgfx::UniformType::Vec4);
-        this->u_lightDirection = bgfx::createUniform("u_lightDirection", bgfx::UniformType::Vec4);
+        // Lighting/fog/time uniforms are owned by Environment and set once
+        // per frame -- see src/render/environment.cpp.
     }
 
     Batch::~Batch() {
-        bgfx::destroy(this->vertex_buffer);
-        bgfx::destroy(this->index_buffer);
+        if (bgfx::isValid(this->vertex_buffer)) bgfx::destroy(this->vertex_buffer);
+        if (bgfx::isValid(this->index_buffer)) bgfx::destroy(this->index_buffer);
         // shader_program is shared across every Batch (see s_shader_cache)
         // and lives for the process lifetime, so it is deliberately not
         // destroyed here.
-        bgfx::destroy(this->u_ambientColor);
-        bgfx::destroy(this->u_lightDirection);
     }
 
     void Batch::submit() {
-        // Set the ambient color
-        float ambientColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f }; // Low intensity gray
-        bgfx::setUniform(u_ambientColor, ambientColor);
+        if (!bgfx::isValid(this->vertex_buffer) || !bgfx::isValid(this->index_buffer)) return;
 
         bgfx::setVertexBuffer(0, this->vertex_buffer);
         bgfx::setIndexBuffer(this->index_buffer);
+
+        if (transparent) {
+            // Blend against whatever opaque terrain already wrote to depth,
+            // but don't write depth ourselves -- water shouldn't occlude
+            // other water, and this batch is submitted after every opaque
+            // batch so it never needs per-quad sorting to look correct.
+            // No BGFX_STATE_CULL_* flag is set, which disables culling
+            // (there's no explicit "cull none" flag) so water is visible
+            // from underwater too.
+            bgfx::setState(BGFX_STATE_WRITE_RGB
+                | BGFX_STATE_DEPTH_TEST_LESS
+                | BGFX_STATE_BLEND_ALPHA);
+        }
 
         bgfx::submit(0, this->shader_program);
     }
 
     bool Batch::push_mesh(Mesh mesh) {
+        if (!bgfx::isValid(this->vertex_buffer) || !bgfx::isValid(this->index_buffer)) return false;
+        if (mesh.vertices.empty() || mesh.vertex_indices.empty()) return true; // nothing to upload; bgfx::copy() fatals on a 0-size buffer
+
         if ((used_vertices + mesh.vertices.size() > max_vertices) || (used_indices + mesh.vertex_indices.size() > max_indices)) {
             Log::error("Failed to push mesh to batch: not enough space");
             if (used_vertices + mesh.vertices.size() > max_vertices) {
@@ -82,6 +105,8 @@ namespace Render {
     }
 
     bool Batch::push_mesh_buffer(const std::vector<Render::Mesh>& meshes) {
+        if (!bgfx::isValid(this->vertex_buffer) || !bgfx::isValid(this->index_buffer)) return false;
+
         size_t total_vertices = used_vertices;
         size_t total_indices = used_indices;
 
@@ -136,6 +161,8 @@ namespace Render {
     }
 
     bool Batch::push_triangle(Vertex v1, Vertex v2, Vertex v3) {
+        if (!bgfx::isValid(this->vertex_buffer) || !bgfx::isValid(this->index_buffer)) return false;
+
         if (used_vertices + 3 > max_vertices || used_indices + 3 > max_indices) {
             Log::error("Failed to push triangle to batch: not enough space");
             return false;

@@ -171,6 +171,13 @@ project "bgfx"
 	rtti "Off"
 	
 	defines { "BX_CONFIG_DEBUG=1", "__STDC_FORMAT_MACROS" }
+	-- Default caps (BGFX_CONFIG_MAX_DYNAMIC_VERTEX_BUFFERS/INDEX_BUFFERS) are
+	-- 4096 each. Every chunk keeps one persistent dynamic vertex+index buffer
+	-- alive for as long as it's loaded (two if it has water faces), so a
+	-- large render distance blows past the default well before it blows past
+	-- any actual memory limit -- bump the caps to cover CHUNK_RADIUS's unload
+	-- radius (see ChunkManager) with headroom to spare.
+	defines { "BGFX_CONFIG_MAX_DYNAMIC_VERTEX_BUFFERS=16384", "BGFX_CONFIG_MAX_DYNAMIC_INDEX_BUFFERS=16384" }
 	files
 	{
 		path.join(BGFX_DIR, "include/bgfx/**.h"),

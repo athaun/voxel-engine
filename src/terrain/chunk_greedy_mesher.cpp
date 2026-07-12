@@ -40,19 +40,45 @@ namespace {
     };
 }
 
-// Whether the voxel at (x,y,z) should count as solid for meshing purposes.
-// Interior positions read the real voxel array; positions exactly one step
-// outside the chunk fall back to the analytic terrain-height buffer, since
-// no neighbor Chunk's voxel data is guaranteed to exist yet.
-bool Chunk::is_solid_for_mesh(int x, int y, int z) {
+// Whether the voxel at (x,y,z) counts as opaque for meshing purposes, i.e.
+// blocks a neighboring face regardless of what that neighbor is. Water is
+// deliberately excluded -- it's translucent, so a face between solid ground
+// and the water sitting on top of it still needs to be meshed (the ground
+// renders through). Interior positions read the real voxel array; positions
+// exactly one step outside the chunk fall back to the analytic
+// terrain-height buffer, since no neighbor Chunk's voxel data is guaranteed
+// to exist yet.
+bool Chunk::is_opaque_for_mesh(int x, int y, int z) {
     if (y < 0 || y >= CHUNK_HEIGHT) return false; // open sky above/below the world
+
+    if (x >= 0 && x < CHUNK_WIDTH && z >= 0 && z < CHUNK_DEPTH) {
+        voxel::Material mat = get_voxel(x, y, z).material;
+        return mat != voxel::AIR && mat != voxel::WATER;
+    }
+
+    if (x == -1 || x == CHUNK_WIDTH || z == -1 || z == CHUNK_DEPTH) {
+        return y <= buffered_terrain_height(x, z);
+    }
+
+    return false;
+}
+
+// Whether the voxel at (x,y,z) is occupied by anything at all, opaque or
+// water -- used to tell whether a WATER face should be exposed (only
+// against bare air; water sitting on water or on the lakebed both stay
+// internal). The chunk-boundary fallback has to account for the sea-level
+// water fill on top of the raw terrain height here, or a lake that
+// continues into a not-yet-built neighbor chunk reads as open air there and
+// grows a spurious water wall right at the chunk seam.
+bool Chunk::is_any_for_mesh(int x, int y, int z) {
+    if (y < 0 || y >= CHUNK_HEIGHT) return false;
 
     if (x >= 0 && x < CHUNK_WIDTH && z >= 0 && z < CHUNK_DEPTH) {
         return get_voxel(x, y, z).material != voxel::AIR;
     }
 
     if (x == -1 || x == CHUNK_WIDTH || z == -1 || z == CHUNK_DEPTH) {
-        return y <= buffered_terrain_height(x, z);
+        return y <= std::max(buffered_terrain_height(x, z), SEA_LEVEL);
     }
 
     return false;
@@ -83,13 +109,24 @@ void Chunk::mesh_direction(uint8_t direction, std::vector<Face>& faces) {
                         // sweep below can skip layers nothing faces on.
     for (int w = 0; w < Wdim; ++w) {
         for (int h = 0; h < Hdim; ++h) {
-            Col col;
+            Col opaqueCol, anyCol;
             for (int n = -1; n <= Ndim; ++n) {
                 auto p = world_pos(direction, w, h, n);
-                if (is_solid_for_mesh(p[0], p[1], p[2])) col.set(n + 1);
+                if (is_opaque_for_mesh(p[0], p[1], p[2])) opaqueCol.set(n + 1);
+                if (is_any_for_mesh(p[0], p[1], p[2])) anyCol.set(n + 1);
             }
+
+            // Opaque voxels expose a face against anything non-opaque (air
+            // or water). Water only exposes a face against bare air -- the
+            // `anyCol` shift (rather than a water-only shift) is what keeps
+            // water from rendering a face against the ground it's resting
+            // on.
+            Col waterCol = anyCol & ~opaqueCol;
+            Col opaqueExposure = positive ? (opaqueCol & ~opaqueCol.shiftDown()) : (opaqueCol & ~opaqueCol.shiftUp());
+            Col waterExposure  = positive ? (waterCol  & ~anyCol.shiftDown())    : (waterCol  & ~anyCol.shiftUp());
+
             Col& exp = exposure[w * Hdim + h];
-            exp = positive ? (col & ~col.shiftDown()) : (col & ~col.shiftUp());
+            exp = opaqueExposure | waterExposure;
             active_layers = active_layers | exp;
         }
     }
@@ -204,15 +241,49 @@ void Chunk::generate_greedy_mesh() {
         mesh_direction(direction, faces);
     }
 
-    Render::Mesh mesh = generate_mesh_from_faces(faces);
+    // Water is meshed and batched separately from opaque terrain so it can
+    // be drawn with a transparent, depth-write-disabled render state after
+    // all opaque geometry (see Batch's `transparent` flag and
+    // ChunkManager::render()'s two-pass submission).
+    std::vector<Face> opaque_faces, water_faces;
+    opaque_faces.reserve(faces.size());
+    for (const Face& face : faces) {
+        if (get_voxel(face.x, face.y, face.z).material == voxel::WATER) {
+            water_faces.push_back(face);
+        } else {
+            opaque_faces.push_back(face);
+        }
+    }
 
-    const uint32_t vertex_count = std::max<uint32_t>(1, static_cast<uint32_t>(mesh.vertices.size()));
-    const uint32_t index_count = std::max<uint32_t>(1, static_cast<uint32_t>(mesh.vertex_indices.size()));
+    // CPU-side only -- no bgfx calls here. This runs on a worker thread;
+    // GPU buffer creation happens later on the main thread via
+    // upload_to_gpu(), see ChunkManager's upload queue.
+    pending_opaque_mesh = generate_mesh_from_faces(opaque_faces);
+    if (!water_faces.empty()) {
+        pending_water_mesh = generate_mesh_from_faces(water_faces);
+        has_water_mesh = true;
+    }
+}
+
+void Chunk::upload_to_gpu() {
+    const uint32_t vertex_count = std::max<uint32_t>(1, static_cast<uint32_t>(pending_opaque_mesh.vertices.size()));
+    const uint32_t index_count = std::max<uint32_t>(1, static_cast<uint32_t>(pending_opaque_mesh.vertex_indices.size()));
 
     batch = new Render::Batch(vertex_count, index_count, "cubes");
-    if (!mesh.vertices.empty()) {
-        batch->push_mesh(mesh);
+    if (!pending_opaque_mesh.vertices.empty()) {
+        batch->push_mesh(pending_opaque_mesh);
     }
+
+    if (has_water_mesh) {
+        const uint32_t water_vertex_count = static_cast<uint32_t>(pending_water_mesh.vertices.size());
+        const uint32_t water_index_count = static_cast<uint32_t>(pending_water_mesh.vertex_indices.size());
+
+        water_batch = new Render::Batch(water_vertex_count, water_index_count, "water", /*transparent=*/true);
+        water_batch->push_mesh(pending_water_mesh);
+    }
+
+    pending_opaque_mesh = Render::Mesh();
+    pending_water_mesh = Render::Mesh();
 }
 
 Render::Mesh Chunk::generate_mesh_from_faces(const std::vector<Face>& faces) {
