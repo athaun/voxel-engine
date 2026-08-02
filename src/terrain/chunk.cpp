@@ -3,23 +3,26 @@
 #include "../noise/OpenSimplexNoise.h"
 #include "../core/timer.h"
 #include <algorithm>
-#include <cstdlib>
-#include <ctime>
+#include <cmath>
+#include <random>
+
+namespace {
+    // Peaks at or above this Y get a snow cap.
+    constexpr int SNOW_LINE = 80;
+    // How many layers below the surface still count as "near-surface" (dirt/
+    // sand) before it's just deep stone.
+    constexpr int SUBSURFACE_DEPTH = 4;
+    // Aridity above this counts as desert (mesa terrain + sand cover).
+    constexpr double DESERT_THRESHOLD = 0.35;
+}
 
 Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUNK_DEPTH), global_z(z * CHUNK_DEPTH) {
-    static int chunk_volume = CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT;
-    static int vertex_count = chunk_volume * 12;
-    static int index_count = chunk_volume * 36;
-
-    batch = new Render::Batch(vertex_count, index_count, "cubes");
-    size_t estimated_mesh_count = 0;
-
     // First pass: Generate terrain heights including buffer zone
     for (int x = 0; x < CHUNK_WIDTH + BUFFER_SIZE; x++) {
-        for (int z = 0; z < CHUNK_DEPTH + BUFFER_SIZE; z++) {           
+        for (int z = 0; z < CHUNK_DEPTH + BUFFER_SIZE; z++) {
             // Clamp the terrain height to CHUNK_HEIGHT
             int height = terrain(global_x + x - BUFFER_SIZE / 2, 0, global_z + z - BUFFER_SIZE / 2);
-            terrain_heights[x][z] = std::clamp(height, 5, CHUNK_HEIGHT); // 5 is sea-level
+            terrain_heights[x][z] = std::clamp(height, 1, CHUNK_HEIGHT); // never let the terrain floor vanish entirely
         }
     }
 
@@ -28,126 +31,173 @@ Chunk::Chunk(int x, int y, int z) : global_x(x * CHUNK_WIDTH), global_y(y * CHUN
         for (int z = 0; z < CHUNK_DEPTH; z++) {
             // Use the buffered terrain height array (offset by BUFFER_SIZE / 2)
             int height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-            
+            bool is_desert = aridity(global_x + x, global_z + z) > DESERT_THRESHOLD;
+
             for (int y = 0; y < CHUNK_HEIGHT; y++) {
                 Voxel v;
-                
+
                 if (y > height) {
-                    v.material = voxel::AIR;
-                    estimated_mesh_count--;
-                } else if (y > height - 1) {
-                    v.material = voxel::GRASS;
-                } else if (y >= height - 2) {
-                    v.material = voxel::DIRT;
+                    // Above the surface: water fills basins below sea level,
+                    // otherwise it's open air.
+                    v.material = (y <= SEA_LEVEL) ? voxel::WATER : voxel::AIR;
+                } else if (y > height - SUBSURFACE_DEPTH) {
+                    // Surface and near-surface layers follow elevation, so a
+                    // single slope naturally runs beach -> grass -> snow cap
+                    // instead of the whole column being one material. Desert
+                    // mesas stay sandy regardless of elevation (that's what
+                    // makes them read as desert instead of a snowy plateau).
+                    if (is_desert || height <= SEA_LEVEL + 2 + random(0, 2)) {
+                        v.material = voxel::SAND;
+                    } else if (height >= SNOW_LINE + random(-3, 3)) {
+                        v.material = (y == height) ? voxel::SNOW : voxel::STONE;
+                    } else if (height >= SNOW_LINE - 4 + random(-3, 3)) {
+                        v.material = voxel::STONE;
+                    } else {
+                        v.material = (y == height) ? voxel::GRASS : voxel::DIRT;
+                    }
                 } else {
+                    // Deep underground -- also what shows on a mesa's sheer
+                    // terrace walls once they drop more than SUBSURFACE_DEPTH,
+                    // giving the classic sandy-cap-over-bare-rock look.
                     v.material = voxel::STONE;
-                }
-
-                if (height < 12 + random(0, 2)) {
-                    v.material = voxel::SAND;
-                } else if (height > CHUNK_HEIGHT - 20 + random(-2, 4)) {
-                    v.material = voxel::SNOW;
-                } else if (height > CHUNK_HEIGHT - 30 + random(0, 3)) {
-                    v.material = voxel::STONE;
-                }
-
-                if (height == 5) {
-                    v.material = voxel::WATER;
                 }
 
                 set_voxel(x, y, z, v);
-                estimated_mesh_count++;
             }
         }
     }
 
-    // ScopedTimer t1("Face culling");
+    // Third pass: scatter varied trees on grass -- oak (round canopy), pine
+    // (tall and conical), and bush (short and wide) -- instead of one
+    // identical shape everywhere. Kept away from the chunk edges (by more
+    // than the largest canopy radius) so a canopy never needs to write into
+    // a neighboring chunk we don't own.
+    static const OpenSimplexNoise::Noise forest_noise(700);
+    const int tree_margin = 4;
+    for (int x = tree_margin; x < CHUNK_WIDTH - tree_margin; x++) {
+        for (int z = tree_margin; z < CHUNK_DEPTH - tree_margin; z++) {
+            int height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
+            int wx = global_x + x, wz = global_z + z;
 
-    uint8_t used_faces = 0b00000000;
-    std::vector<Render::Mesh> mesh_buffer;
-    mesh_buffer.reserve(estimated_mesh_count);
+            bool is_sandy = height <= SEA_LEVEL + 4;
+            bool is_snowy = height >= SNOW_LINE - 4;
+            bool is_desert = aridity(wx, wz) > DESERT_THRESHOLD;
+            if (is_sandy || is_snowy || is_desert || height >= CHUNK_HEIGHT - 12) continue;
 
-    // Third pass: Generate meshes using the buffered terrain data
-    for (int x = 0; x < CHUNK_WIDTH; x++) {
-        for (int z = 0; z < CHUNK_DEPTH; z++) {
-            // Get the height at current position
-            int current_height = terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-            
-            // Generate voxels from bottom up to the terrain height
-            for (int y = 0; y <= current_height; y++) {
-                used_faces = get_visible_faces(x, y, z);
-                
-                if (used_faces != 0) {
-                    Voxel current_voxel = get_voxel(x, y, z); // Get current voxel material
-                    
-                    for (int face = 0; face < 6; ++face) {
-                        if (used_faces & (1 << face)) {
-                            float raw_values[4];
-                            calculate_face_ao(x, y, z, face, raw_values);
-                            
-                            Render::Mesh c = Render::transform_mesh(
-                                Render::cube(static_cast<uint8_t>(1 << face), raw_values, current_voxel.material), global_x + x, y, global_z + z
-                            );
-                            mesh_buffer.push_back(c);
+            // Forests are patches, not an even scatter: outside a forest
+            // region there are no trees at all (real open plains), and
+            // density ramps up toward the middle of a forest instead of
+            // being uniform everywhere.
+            double forest = forest_noise.eval(wx * 0.004, wz * 0.004); // [-1,1]
+            if (forest < 0.15) continue;
+            double forest_t = std::clamp((forest - 0.15) / 0.5, 0.0, 1.0);
+            int chance = static_cast<int>(4 + forest_t * 40); // 0.4% at the edge, 4.4% at the core
+
+            if (random(0, 999) >= chance) continue;
+
+            auto place_leaf = [&](int lx, int ly, int lz) {
+                if (ly < 0 || ly >= CHUNK_HEIGHT) return;
+                Voxel leaf;
+                leaf.material = voxel::LEAVES;
+                set_voxel(lx, ly, lz, leaf);
+            };
+            auto place_trunk = [&](int ty) {
+                if (ty < 0 || ty >= CHUNK_HEIGHT) return;
+                Voxel trunk;
+                trunk.material = voxel::WOOD;
+                set_voxel(x, ty, z, trunk);
+            };
+
+            int tree_type = random(0, 9); // 0-5 oak, 6-8 pine, 9 bush
+
+            if (tree_type <= 5) {
+                // Oak: round, slightly ragged canopy on a medium trunk.
+                int trunk_height = random(4, 6);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
+
+                int radius = random(2, 3);
+                int canopy_center = height + trunk_height;
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        for (int dy = -1; dy <= radius; dy++) {
+                            if (dx == 0 && dz == 0 && dy <= 0) continue; // leave the trunk's top clear
+                            int dist2 = dx * dx + dz * dz + dy * dy * 2;
+                            if (dist2 > radius * radius + 2) continue;
+                            if (dist2 > radius * radius - 1 && random(0, 3) == 0) continue; // ragged edge
+                            place_leaf(x + dx, canopy_center + dy, z + dz);
+                        }
+                    }
+                }
+            } else if (tree_type <= 8) {
+                // Pine: tall trunk, stacked rings narrowing toward the top.
+                int trunk_height = random(7, 11);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
+
+                int layers = random(4, 6);
+                int top = height + trunk_height;
+                for (int layer = 0; layer < layers; layer++) {
+                    int ly = top - layers + layer + 1;
+                    int r = std::max(1, (layers - layer) / 2 + 1);
+                    for (int dx = -r; dx <= r; dx++) {
+                        for (int dz = -r; dz <= r; dz++) {
+                            if (dx == 0 && dz == 0) continue; // trunk column stays clear
+                            if (dx * dx + dz * dz > r * r + 1) continue;
+                            place_leaf(x + dx, ly, z + dz);
+                        }
+                    }
+                }
+                place_leaf(x, top + 1, z); // tip
+            } else {
+                // Bush: short trunk, wide flat canopy.
+                int trunk_height = random(1, 2);
+                for (int dy = 1; dy <= trunk_height; dy++) place_trunk(height + dy);
+
+                int radius = random(2, 3);
+                int canopy_center = height + trunk_height;
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        for (int dy = 0; dy <= 1; dy++) {
+                            if (dx * dx + dz * dz + dy * dy * 3 > radius * radius) continue;
+                            place_leaf(x + dx, canopy_center + dy, z + dz);
                         }
                     }
                 }
             }
         }
     }
-    batch->push_mesh_buffer(mesh_buffer);
+
+    // Fourth pass: greedy-mesh the chunk, then allocate the GPU batch at the
+    // mesh's actual size instead of the worst-case (every voxel exposing
+    // all 6 faces) bound the old path used.
+    generate_greedy_mesh();
 }
 
 template <typename T>
 T Chunk::random(T lower, T upper) {
-    // Seed the random number generator once
-    static bool seeded = false;
-    if (!seeded) {
-        std::srand(std::time(0));  // Seed the random number generator with current time
-        seeded = true;
-    }
-
-    // Generate a random number in the range [lower, upper]
-    return lower + (std::rand() % (upper - lower + 1));
+    // std::rand()/std::srand() share global state that isn't thread-safe --
+    // every chunk-worker thread called this per voxel, which is a data race
+    // (and likely UB) now that many chunks build concurrently. A thread_local
+    // engine gives each worker thread its own independent state.
+    thread_local std::mt19937 engine{std::random_device{}()};
+    std::uniform_int_distribution<T> dist(lower, upper);
+    return dist(engine);
 }
 
-inline int Chunk::buffered_terrain_height(int x, int z) {
+int Chunk::buffered_terrain_height(int x, int z) {
     static int offset = BUFFER_SIZE / 2;
-    return terrain_heights[x + offset][z + offset];
+    // calculate_ao's diagonal/corner checks reach 2 voxels out along a face's
+    // normal axis (corner1 and corner2 each carry a redundant 1-step normal
+    // offset), which can overrun this buffer's single column of padding at a
+    // chunk edge. Clamp to the buffer's actual valid range instead of
+    // indexing past it -- the clamped border height is as good an
+    // approximation as any for terrain 2 voxels beyond data we actually have.
+    int cx = std::clamp(x, -offset, CHUNK_WIDTH + offset - 1);
+    int cz = std::clamp(z, -offset, CHUNK_DEPTH + offset - 1);
+    return terrain_heights[cx + offset][cz + offset];
 }
 
 inline bool Chunk::is_above_terrain(int x, int y, int z) {
     return y > std::min(buffered_terrain_height(x, z), CHUNK_HEIGHT - 1);
-}
-
-inline bool Chunk::is_empty(int x, int y, int z) {
-    // Out-of-bounds beyond the buffer are treated as solid
-    if (x < -BUFFER_SIZE / 2 || x >= CHUNK_WIDTH + BUFFER_SIZE / 2 ||
-        y < 0 || y >= CHUNK_HEIGHT ||
-        z < -BUFFER_SIZE / 2 || z >= CHUNK_DEPTH + BUFFER_SIZE / 2) {
-        return false;
-    }
-
-    // Inside actual chunk bounds
-    if (x >= 0 && x < CHUNK_WIDTH && z >= 0 && z < CHUNK_DEPTH) {
-        return get_voxel(x, y, z).material == voxel::Material::AIR;
-    }
-
-    // Inside buffer zone: compare with terrain height
-    return y > terrain_heights[x + BUFFER_SIZE / 2][z + BUFFER_SIZE / 2];
-}
-
-uint8_t Chunk::get_visible_faces(int x, int y, int z) {
-    uint8_t used_faces = 0b00000000;
-
-    used_faces |= (y > buffered_terrain_height(x, z + 1)) << 0; // Front face (+Z)
-    used_faces |= (y > buffered_terrain_height(x + 1, z)) << 1; // Right face (+X)
-    used_faces |= (y > buffered_terrain_height(x, z - 1)) << 2; // Back face (-Z)
-    used_faces |= (y > buffered_terrain_height(x - 1, z)) << 3; // Left face (-X)
-    used_faces |= (y == buffered_terrain_height(x, z)) << 4; // Top face (+Y)
-    used_faces |= (y == 0) << 5; // Bottom face (-Y)
-
-    return used_faces;
 }
 
 float Chunk::calculate_ao(int x, int y, int z, int corner1_x, int corner1_y, int corner1_z, 
@@ -287,43 +337,145 @@ T map(T value, T start1, T stop1, T start2, T stop2) {
 }
 
 double Chunk::terrain(int x, int y, int z) {
-    // Define noise parameters
-    int octaves = 5;   // Number of noise layers
-    double persistence = 0.3;  // How much each octave contributes to the overall noise
-    double lacunarity = 2.0;   // How much the frequency increases per octave
+    const int detail_octaves = 5;
+    const double persistence = 0.3;
+    const double lacunarity = 2.0;
 
-    double noiseValue = 0.0;
-    double amplitude = 1.2;
-    double frequency = 0.9;
-    double maxValue = 0.0;
+    static const std::array<OpenSimplexNoise::Noise, detail_octaves> detail_noise = {
+        OpenSimplexNoise::Noise(0), OpenSimplexNoise::Noise(1), OpenSimplexNoise::Noise(2),
+        OpenSimplexNoise::Noise(3), OpenSimplexNoise::Noise(4)
+    };
+    static const OpenSimplexNoise::Noise continent_noise(100);
+    static const OpenSimplexNoise::Noise erosion_noise(200);
+    static const std::array<OpenSimplexNoise::Noise, 4> ridge_noise = {
+        OpenSimplexNoise::Noise(300), OpenSimplexNoise::Noise(301),
+        OpenSimplexNoise::Noise(302), OpenSimplexNoise::Noise(303)
+    };
+    static const OpenSimplexNoise::Noise warp_noise_x(400);
+    static const OpenSimplexNoise::Noise warp_noise_z(401);
+    static const OpenSimplexNoise::Noise mesa_noise(600);
 
-    for (int i = 0; i < octaves; ++i) {
+    // Domain warp the sample point with a separate low-frequency noise field
+    // so coastlines and ridgelines wind naturally instead of looking aligned
+    // to the underlying noise grid.
+    const double warp_scale = 0.006;
+    const double warp_strength = 45.0;
+    double wx = x + warp_noise_x.eval(x * warp_scale, z * warp_scale) * warp_strength;
+    double wz = z + warp_noise_z.eval(x * warp_scale + 500.0, z * warp_scale - 500.0) * warp_strength;
 
-        // Create a new instance of the noise generator with a new seed
-        OpenSimplexNoise::Noise simplex(i); // Adjust the seed
+    double continent = continent_noise.eval(wx * 0.0045, wz * 0.0045);
 
-        // Calculate the noise value for the current octave
-        noiseValue += simplex.eval(x * 0.01 * frequency, z * 0.01 * frequency) * amplitude;
-        maxValue += amplitude;
+    const double PLAINS = 42.0;
+    const double MOUNTAIN_PEAK = 129.0;
 
-        // Update amplitude and frequency for the next octave
+    // Desert mesas: terrace a broad noise field into discrete flat-topped
+    // steps with sheer sides instead of smooth hills -- rounding to a fixed
+    // number of levels is what actually produces flat mesa tops and cliff
+    // faces rather than a continuous slope. Computed unconditionally and
+    // blended in below by aridity/continentalness rather than switched to
+    // via a hard branch -- a branch here made height snap between this and
+    // the normal formula below wherever aridity/continentalness crossed
+    // their threshold, even mid-slope, since the two come from unrelated
+    // noise fields with no reason to agree at the boundary.
+    double mesaRaw = mesa_noise.eval(wx * 0.006, wz * 0.006); // [-1, 1]
+    const double mesaLevels = 5.0;
+    double mesaTerraced = std::round(mesaRaw * mesaLevels) / mesaLevels;
+    double mesaHeight = map(mesaTerraced, -1.0, 1.0, PLAINS - 8.0, PLAINS + 50.0);
+    mesaHeight += detail_noise[0].eval(wx * 0.02, wz * 0.02) * 1.5; // slight roughness, tops stay mostly flat
+
+    // Erosion in [0, 1]: how much relief a region is allowed. Thresholded
+    // (not just a power-curve dampener) so a sizeable fraction of erosion-
+    // high regions reach *full* ridge amplitude instead of every region
+    // needing erosion and ridge to both independently peak at once -- that
+    // multiplicative requirement was why mountains almost never actually
+    // appeared. Kept at the original large wavelength (unlike
+    // continentalness) so a mountainous patch is big enough to contain a
+    // whole range instead of clipping it.
+    double erosion_raw = erosion_noise.eval(wx * 0.0022, wz * 0.0022); // [-1, 1]
+    double erosion_t = std::clamp((erosion_raw + 0.1) / 0.4, 0.0, 1.0);
+    double erosion = 0.15 + erosion_t * 0.85; // always some relief, ramping up to full mountains
+
+    // Ridged multifractal (1 - |noise|) carves actual mountain ridgelines
+    // and valleys instead of smooth Perlin bumps. Also kept at the original
+    // large wavelength so ranges are grand instead of choppy little bumps.
+    double ridge = 0.0, ridge_amp = 1.0, ridge_freq = 0.0065, ridge_amp_sum = 0.0;
+    for (auto& octave : ridge_noise) {
+        ridge += (1.0 - std::abs(octave.eval(wx * ridge_freq, wz * ridge_freq))) * ridge_amp;
+        ridge_amp_sum += ridge_amp;
+        ridge_amp *= 0.5;
+        ridge_freq *= 2.1;
+    }
+    ridge = ridge / ridge_amp_sum;
+    ridge *= ridge; // sharpen peaks, widen valleys
+
+    // Fine detail: small-scale roughness layered on top of the large-scale
+    // shape above, rather than defining the whole terrain by itself.
+    double noiseValue = 0.0, amplitude = 1.0, frequency = 1.0, maxAmplitude = 0.0;
+    for (int i = 0; i < detail_octaves; ++i) {
+        noiseValue += detail_noise[i].eval(wx * 0.015 * frequency, wz * 0.015 * frequency) * amplitude;
+        maxAmplitude += amplitude;
         amplitude *= persistence;
         frequency *= lacunarity;
     }
+    double detail = noiseValue / maxAmplitude;
 
-    double height = (double)map(noiseValue, -1.0, 1.0, 5.0, (double)CHUNK_HEIGHT - 5);
-    height = height * height / (CHUNK_HEIGHT);
+    // Base elevation from continentalness. The ocean branch is deliberately
+    // capped well below sea level (not just barely under it) so ocean is a
+    // real, reliable body of water instead of a thin puddle at the extreme
+    // edge of the noise range.
+    const double OCEAN_FLOOR = 4.0;
+    double base;
+    if (continent < 0.0) {
+        base = map(continent, -1.0, 0.0, OCEAN_FLOOR, SEA_LEVEL - 3.0);
+    } else if (continent < 0.12) {
+        base = map(continent, 0.0, 0.12, SEA_LEVEL - 3.0, SEA_LEVEL + 8.0);
+    } else {
+        base = map(continent, 0.12, 1.0, SEA_LEVEL + 8.0, PLAINS);
+    }
 
-    return height;
+    // Mountains rise out of the plains where erosion allows it, shaped by
+    // the ridged noise.
+    double mountain = ridge * erosion * (MOUNTAIN_PEAK - PLAINS);
+
+    double height = base + mountain + detail * 4.0;
+
+    // Fade the mesa formula in by aridity/continentalness instead of
+    // switching to it outright, so desert edges taper into the surrounding
+    // terrain (and into the coast) instead of cutting a cliff right at the
+    // threshold.
+    auto smoothstep = [](double edge0, double edge1, double v) {
+        double t = std::clamp((v - edge0) / (edge1 - edge0), 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    };
+    double desertBlend = smoothstep(DESERT_THRESHOLD - 0.08, DESERT_THRESHOLD + 0.08, aridity(x, z))
+                        * smoothstep(-0.10, 0.0, continent);
+
+    return height + (mesaHeight - height) * desertBlend;
 }
 
+// Large-scale field deciding where desert (mesa terrain + sand cover) shows
+// up, independent of elevation -- a desert can be inland at any height, not
+// just a strip near sea level.
+double Chunk::aridity(int x, int z) {
+    static const OpenSimplexNoise::Noise aridity_noise(500);
+    return aridity_noise.eval(x * 0.001, z * 0.001);
+}
 
 Chunk::~Chunk() {
     delete batch;
+    delete water_batch;
 }
 
-void Chunk::submit_batch() {
-    batch->submit();
+void Chunk::submit_opaque_batch() {
+    // Null until upload_to_gpu() runs on the main thread -- a chunk waiting
+    // in the upload queue just doesn't render yet rather than crashing.
+    if (batch) batch->submit();
+}
+
+void Chunk::submit_water_batch() {
+    if (water_batch) {
+        water_batch->submit();
+    }
 }
 
 Voxel Chunk::get_voxel(int x, int y, int z) {

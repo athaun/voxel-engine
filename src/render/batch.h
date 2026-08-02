@@ -19,9 +19,8 @@ class Batch {
     uint32_t used_indices;
 
     bgfx::UniformHandle s_texture;
-    
-    bgfx::UniformHandle u_ambientColor;
-    bgfx::UniformHandle u_lightDirection;
+
+    bool transparent;
 
     bgfx::DynamicVertexBufferHandle vertex_buffer;
     bgfx::DynamicIndexBufferHandle index_buffer;
@@ -32,7 +31,7 @@ class Batch {
     std::vector<Mesh> meshes;
 
    public:
-    Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name);
+    Batch(unsigned long max_vertices, unsigned long max_indices, const char *shader_name, bool transparent = false);
     ~Batch();
 
     void submit();

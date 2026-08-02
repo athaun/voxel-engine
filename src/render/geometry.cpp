@@ -111,6 +111,7 @@ namespace Render {
                 v.g = color.g;
                 v.b = color.b;
                 v.ao = ao_values ? ao_values[i] : 1.0f;
+                v.material_id = static_cast<float>(material);
                 
                 quad_verts[i] = v;
             }
